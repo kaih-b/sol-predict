@@ -1,1 +1,6 @@
-# Predicting-Drug-Solubility
+# SolPredict: Molecular Solubility Prediciton Using Machine Learning
+
+## About
+
+## Features
+

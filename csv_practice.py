@@ -1,10 +1,8 @@
 import pandas as pd
 import numpy as np
 
-with open('players_master.csv', 'r') as f:
-    data = f.read()
-    lines = data.split('\n')
-    df = pd.read_csv('players_master.csv')
+
+df = pd.read_csv('players_master.csv')
 
 # print(df.head()) # First 5 rows of the dataframe
 # print(df.tail()) # Last 5 rows of the dataframe

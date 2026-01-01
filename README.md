@@ -1,4 +1,4 @@
-## SolPredict: Molecular Solubility Prediction Using Machine Learning
+# SolPredict: Molecular Solubility Prediction Using Machine Learning
 
 An undergraduate ChemBE independent research project aiming to predict the solubility of organic compounds from molecular descriptors using Python-based machine learning techniques.
 

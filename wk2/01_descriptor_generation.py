@@ -2,7 +2,7 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
-df = pd.read_csv('delaney_dataset.csv')
+df = pd.read_csv('wk2/delaney_dataset.csv')
 df.rename(columns={'measured log(solubility:mol/L)': 'logS', 'ESOL predicted log(solubility:mol/L)': 'ESOL logS'}, inplace=True)
 
 # Convert SMILES to RDKit Molecule objects, removing any rows with invalid SMILES strings

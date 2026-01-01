@@ -1,0 +1,2 @@
+model,max_depth,test_rmse,test_r2,train_rmse,train_r2
+LinearRegression,5,0.9929372037711208,0.7735871717843364,1.0003889524063434,0.7725158210237302

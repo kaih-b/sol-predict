@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import root_mean_squared_error, r2_score
 
-df = pd.read_csv('wk3/esol_final_features.csv')
+df = pd.read_csv('wk3/final_features.csv')
 
 # Splits  dataframe into target variable (y) and frozen feature set (x)
 X = df.drop(columns=['logS'])

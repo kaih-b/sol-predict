@@ -1,0 +1,2 @@
+model,max_depth,test_rmse,test_r2,train_rmse,train_r2
+DecisionTreeRegressor,5,0.9138954489777985,0.8081991655368876,0.7067069985638927,0.8864748176659096

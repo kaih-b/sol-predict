@@ -36,4 +36,6 @@ results = {'model': 'LinearRegression',
     'train_rmse': train_rmse,
     'train_r2': train_r2}
 
-pd.DataFrame([results]).to_csv('wk3/linear_regression_results.csv', index=False)
+pd.DataFrame([results]).to_csv(
+    'wk3/linear_regression_results.csv',
+    index=False)

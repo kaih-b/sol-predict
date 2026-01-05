@@ -1,0 +1,29 @@
+Decision trees struggle with prediction on data unlike its training data.
+Random forests offer decision tree simplicity with greatly improved accuracy.
+
+Random forests operate from bootstrapped datasets, which are comprised of randomly selected samples from a full dataset (with duplicates).
+Bootstrapped data usually includes ~2/3 of an original dataset. The missing samples are known as the out of bag dataset.
+Consider only a subset of variables for each node, instead of considering all variables at once.
+
+Now, repeat the process with new bootstrapped datasets and new variable arrangements. This process is repeated many, many times.
+This creates a wide variety of decision trees which can be used to better predict outcomes.
+
+The forest predicts outcomes based on an aggregate total of the outcomes from each of the trees. The most common outcome is the final prediction
+This process is known as BAGGING (Bootstrapping + AGGregating).
+Prediction can also be tested using out of bag samples with known outcomes. This is a measure of the model's accuracy.
+The proportion that are incorrectly predicted is the out of bag error.
+
+You can tweak the number of variables per node to see how it affects accuracy to optimize a model.
+
+Missing data is classified into samples with missing data from the original dataset, and samples with missing data we want to categorize (predict).
+
+For the first type, the strategy is to handle missing data by making guesses and iterating.
+We iterate by building another random forest to from similar points in the original dataset. 
+These similarities are captured in a proximity matrix. Each proximity value is divided by the number of trees in the forest.
+These proximity values are then used as frequency weights which can be used to more precisely estimate missing data based on other data
+We repeat this process until the missing values converge.
+
+For the second type, the strategy is also to guess and run a random forest. The more correct guess is accepted.
+This guess can be used to classify the sample with missing data.
+
+Adapted from StatQuest: https://www.youtube.com/watch?v=J4Wdy0Wc_xQ, https://www.youtube.com/watch?v=sQ870aTKqiM

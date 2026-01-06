@@ -35,4 +35,7 @@ results = {'model': 'DecisionTreeRegressor',
     'test_r2': r2,
     'train_rmse': train_rmse,
     'train_r2': train_r2}
-pd.DataFrame([results]).to_csv('wk3/decision_tree_results.csv', index=False)
+
+pd.DataFrame([results]).to_csv(
+    'wk3/decision_tree_results.csv',
+    index=False)

@@ -18,7 +18,7 @@ corr_df['logS'] = y
 
 plt.figure(figsize=(8,6))
 sns.heatmap(corr_df.corr(), annot=True, fmt='.2f', cmap='Blues', square=True)
-plt.title('Correlation Heatmap of Molecular Descriptors for logS')
+plt.title('Correlation Heatmap of Molecular Descriptors')
 plt.show()
 
 # Takeways

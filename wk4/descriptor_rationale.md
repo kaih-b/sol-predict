@@ -1,0 +1,11 @@
+- **MolWt**: Larger molecules tend to be less soluble in water.
+- **LogP**: Measures hydrophobicity; more lipophilic molecules tend to be less soluble in water.
+- **TPSA**: Greater polar surface area often indicates greater hydrogen bonding and polarity, indicating more solubility in water.
+- **RotB**: Molecular flexibility affects crystal packing and solubility.
+- **AroProp**: Aromatic content affects π–π stacking and hydrophobic interactions which tends to reduce solubility.
+- **HBD**: Hydrogen bond donors support interactions with water, often increasing solubility.
+- **HBA**: Hydrogen bond acceptors also support interactions with water, often increasing solubility.
+- **RingCount**: Greater ring count rigidifies molecules, often increasing hydrophobicity and decreasing solubility.
+- **FractionCSP3**: Higher sp3 character is often indicates more 3D shape, improving solubility compared to flat systems.
+- **HeavyAtomCount**: Relates molecular size and non-hydrogen content, which influences both polarity and hydrophobic surface area.
+- **BertzCT**: Higher complexity tends to correlate with rigidity and hydrophobicity, which decreases solubility. However, more factors are at play and higher complexity can increase solubility e.g. in cases of non-planar structures.

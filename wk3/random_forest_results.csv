@@ -1,0 +1,2 @@
+model,max_depth,test_rmse,test_r2,train_rmse,train_r2,n_estimators
+RandomForestRegressor,,0.6625882928777901,0.8991803978341076,0.2875493808825901,0.9812051745178495,200

@@ -5,8 +5,8 @@ import numpy as np
 df = pd.read_csv('wk3/final_features.csv')
 
 # Identify the target and descriptor columns
-target_col = "logS"
-descriptor_cols = ["MolWt", "LogP", "TPSA", "RotB", "AroProp"]
+target_col = 'logS'
+descriptor_cols = ['MolWt', 'LogP', 'TPSA', 'RotB', 'AroProp']
 
 # Separate the features and target variable
 X = df[descriptor_cols].copy()
@@ -19,7 +19,7 @@ print(variances)
 # Identify and print descriptors with near-zero variance
 near_zero_var_threshold = 1e-4
 near_zero_var = variances[variances < near_zero_var_threshold]
-print("Near-zero variance descriptors:")
+print('Near-zero variance descriptors:')
 print(near_zero_var)
 
 # Calculate and print the correlation matrix of the descriptors
@@ -46,21 +46,22 @@ for col1, col2, r in high_corr_pairs:
     # drop the one that has a higher mean correlation with others
     drop = col1 if mean_corr1 > mean_corr2 else col2
     to_drop_corr.add(drop)
-print("Dropping due to high correlation:", to_drop_corr)
+print('Dropping due to high correlation:', to_drop_corr)
 
 # Drop the identified descriptors from the dataset
 to_drop_var = set(near_zero_var.index)
 to_drop = list(to_drop_var.union(to_drop_corr))
-print("Final descriptors to drop:", to_drop)
+print('Final descriptors to drop:', to_drop)
 X_clean = X.drop(columns=to_drop)
-print("Columns kept:", X_clean.columns.tolist())
+print('Columns kept:', X_clean.columns.tolist())
 
 # Based on the analysis, we can decide to drop descriptors if needed
 # For these descriptors and this sample, no descriptors are dropped (minimum variance is 1e-1 and max correlation is 0.473)
 # This is a good indication that the descriptors used are appropriate for modeling (non-redundant, independent, and changing across data)
 # However, further analysis is needed with other data to validate this conclusion
 
-# Save the "cleaned" descriptor dataset (same as original in this case, with added SMILES from original dataset)
+# Save the 'cleaned' descriptor dataset (same as original in this case, with added SMILES from original dataset)
 SMILES = pd.read_csv('wk2/delaney_dataset.csv')['SMILES']
 X_clean.insert(0, 'SMILES', SMILES)
+X_clean.insert(1, 'logS', y)
 X_clean.to_csv('wk4/cleaned_descriptors.csv', index=False)

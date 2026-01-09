@@ -1,6 +1,5 @@
 if __name__ == '__main__':
     import json
-    import numpy as np
     import pandas as pd
     from sklearn.model_selection import train_test_split, GridSearchCV, KFold
     from sklearn.ensemble import RandomForestRegressor
@@ -13,7 +12,7 @@ if __name__ == '__main__':
     X = df.drop(columns=[target_col, 'SMILES'])
     y = df[target_col]
 
-    # Recreate or train/test split with the same parameters as previous weeks
+    # Recreate train/test split with the same parameters as previous weeks
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
 
     # Initialize a random forest regressor with the same parameters as previous weeks

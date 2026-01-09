@@ -1,8 +1,10 @@
 import json
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.inspection import permutation_importance
+from sklearn.inspection import PartialDependenceDisplay
 from sklearn.metrics import root_mean_squared_error
 
 # Recreate train-test split
@@ -33,17 +35,17 @@ perm_result = permutation_importance(
     n_repeats=20,
     random_state=42,
     n_jobs=-1)
-perm_importances = perm_result.importances_mean
-perm_importances_std = perm_result.importances_std
+delta_rmse = perm_result.importances_mean
+delta_rmse_std = perm_result.importances_std
 
 # Export permutation importance RMSE and standard deviation into a dataframe
 perm_df = pd.DataFrame({
     'descriptor': descriptor_cols,
-    'perm_importance': perm_importances,
-    'perm_importance_std': perm_importances_std})
+    'delta_RMSE': delta_rmse,
+    'delta_RMSE_std': delta_rmse_std})
 
 # Sort and output the permutation results based on RMSE impact
-perm_df.sort_values('perm_importance', ascending=False, inplace=True)
+perm_df.sort_values('delta_RMSE', ascending=False, inplace=True)
 print(perm_df.head(7))
 
 # Export results to CSV
@@ -52,5 +54,30 @@ perm_df.to_csv('wk4/rf_perm_importance.csv', index=False)
 # Read in and save a full CSV with both descriptor and permutation importances
 gini_df = pd.read_csv('wk4/rf_gini_importance.csv')
 comparison_df = gini_df.merge(perm_df, on='descriptor', how='inner')
-comparison_df.sort_values('perm_importance', ascending=False, inplace=True)
+comparison_df.sort_values('delta_RMSE', ascending=False, inplace=True)
 comparison_df.to_csv('wk4/rf_importance_comparison.csv', index=False)
+
+# Create and save a bar plot of the descriptors ranked by delta RMSE
+plt.figure()
+plt.bar(x=range(len(perm_df)), height=perm_df['delta_RMSE'])
+plt.xticks(ticks=range(len(perm_df)), labels=perm_df['descriptor']),
+plt.ylabel('ΔRMSE (permutation importance)')
+plt.title('Descriptors Ranked by Permutation Importance (Test Set)')
+plt.tight_layout()
+plt.savefig('wk4/rf_perm_importance_plot.png')
+plt.close()
+
+# Choose top 3 descriptors to inspect partial dependence
+top_pdp_descriptors = perm_df.head(3)['descriptor'].tolist()
+
+# Generate plot of partial dependence based on training data
+disp = PartialDependenceDisplay.from_estimator(
+    rf_tuned,
+    X_train,
+    features=top_pdp_descriptors,
+    feature_names=descriptor_cols)
+fig = disp.figure_
+fig.tight_layout(rect=(0, 0, 1, 0.95))   # make room for title
+plt.suptitle('Partial Dependence Plot for Top 3 Descriptors')
+plt.savefig('wk4/rf_pdp.png', dpi=300) # increase quality to better observe partial dependence behavior
+plt.close()

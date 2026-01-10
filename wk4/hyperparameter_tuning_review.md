@@ -27,6 +27,7 @@ In total, this corresponds to 3<sup>4</sup> = 81 hyperparameter combintaions, ea
 - **min_samples_leaf** = 2
 
 **Mean CV RMSE** = 0.7133
+
 **Standard Deviation Across Folds** = 0.0646
 
 These hyperparameters will be used from now on as they best predicted solubility with no clear sign of overfitting (reasonable standard deviation across folds). They are the basis for evaluating this tuned random forest model against other models.

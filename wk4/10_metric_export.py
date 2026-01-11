@@ -27,6 +27,6 @@ df_imp.to_csv('tableau/inputs/rf_gini_importance.csv', index=False)
 
 # Clean up and export permutation importances
 df_perm = pd.read_csv('wk4/rf_perm_importance.csv')
-df_perm.drop('delta_RMSE_std', axis=1)
+df_perm.drop('delta_RMSE_std', axis=1, inplace=True)
 df_perm = df_perm.rename(columns={'descriptor': 'Descriptor', 'delta_RMSE': 'ΔRMSE'})
 df_perm.to_csv('tableau/inputs/rf_perm_importance.csv', index=False)

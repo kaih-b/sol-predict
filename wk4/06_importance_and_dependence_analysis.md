@@ -29,7 +29,7 @@ As before, these findings are consistent with chemical intuition, hydrophobicity
 - Plot error distributions and residuals stratified by the top three predictors (logP, BertzCT, MolWt) to confirm that there are no systematic errors
 - Assemble and visualize comparison figures using Tableau:
     - initial models vs. tuned RF
-    - descriptor importance panel (Gini- & permutation-based)-
+    - descriptor importance panel (Gini- & permutation-based)
     - cleaned partial dependence plot for logP, BertzCT, and MolWt (not in Tableau)
     - case study on one molecule from the dataset used
 - **PyTorch Implementation** -- teach self basics, then create a regressor on the same descriptors to compare model performance

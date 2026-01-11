@@ -11,7 +11,7 @@ df_new_keep = [c for c in df_new.columns if c in keep_metrics]
 df_old = df_old[df_old_keep]
 df_new = df_new[df_new_keep]
 
-# Concatenate old and new model metrics; export to csv
+# Concatenate old and new model metrics; export to csv and png
 df = pd.concat([df_old, df_new], ignore_index=True)
 df = df.rename(columns={'model': 'Model', 'test_rmse': 'Test RMSE', 'test_r2': 'Test R²'})
 name_map = {'LinearRegression': 'Linear Regression', 'DecisionTreeRegressor': 'Decision Tree', 

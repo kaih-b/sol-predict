@@ -14,7 +14,7 @@ df_new = df_new[df_new_keep]
 # Concatenate old and new model metrics; export to csv
 df = pd.concat([df_old, df_new], ignore_index=True)
 df = df.rename(columns={'model': 'Model', 'test_rmse': 'Test RMSE', 'test_r2': 'Test R²'})
-name_map = {'LinearRegression': 'Linear Regression', 'Decision Tree Regressor': 'Decision Tree', 
+name_map = {'LinearRegression': 'Linear Regression', 'DecisionTreeRegressor': 'Decision Tree', 
             'RandomForestRegressor': 'Random Forest (Base)', 'Tuned_RF': 'Random Forest (Tuned)'}
 df['Model'] = df['Model'].replace(name_map)
 df.sort_values('Test RMSE', inplace=True)

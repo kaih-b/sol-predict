@@ -34,7 +34,7 @@ plt.xlabel('Residual')
 plt.ylabel('Count')
 plt.title('Test Residual Distribution')
 plt.tight_layout()
-plt.savefig('wk4/residuals_histogram.png', dpi=300)
+plt.savefig('exports/residuals_histogram.png', dpi=300)
 plt.close()
 
 # Visualize and save residuals vs predicted values plot
@@ -45,7 +45,7 @@ plt.xlabel('Predicted logS')
 plt.ylabel('Residual')
 plt.title('Residuals vs Predicted (Test Set)')
 plt.tight_layout()
-plt.savefig('wk4/residuals_vs_predicted.png', dpi=300)
+plt.savefig('exports/residuals_vs_predicted.png', dpi=300)
 plt.close()
 
 # Identify top descriptors as previously determined
@@ -61,7 +61,7 @@ for desc in top_descriptors:
     plt.ylabel('Residual')
     plt.title(f'Residuals vs {desc} (Test Set)')
     plt.tight_layout()
-    out_path = f'wk4/residuals_vs_{desc}.png'
+    out_path = f'exports/residuals_vs_{desc}.png'
     plt.savefig(out_path, dpi=300)
     plt.close()
 

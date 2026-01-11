@@ -30,6 +30,6 @@ for desc in pdp_descriptors:
     # Plot partial dependence with Matplotlib
     plt.title(f'Partial Dependence of logS on {desc}')
     plt.tight_layout()
-    out_path = f'wk4/pdp_{desc}.png'
+    out_path = f'exports/pdp_{desc}.png'
     plt.savefig(out_path, dpi=300)
     plt.close()

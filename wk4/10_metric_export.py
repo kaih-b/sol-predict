@@ -18,15 +18,16 @@ name_map = {'LinearRegression': 'Linear Regression', 'DecisionTreeRegressor': 'D
             'RandomForestRegressor': 'Random Forest (Base)', 'Tuned_RF': 'Random Forest (Tuned)'}
 df['Model'] = df['Model'].replace(name_map)
 df.sort_values('Test RMSE', inplace=True)
-df.to_csv('tableau/inputs/model_comparison.csv', index=False)
+df.to_csv('exports/model_comparison.csv', index=False)
 
 # Clean up and export gini importances
 df_imp = pd.read_csv('wk4/rf_gini_importance.csv')
 df_imp = df_imp.rename(columns={'descriptor': 'Descriptor', 'gini_importance': 'Importance'})
-df_imp.to_csv('tableau/inputs/rf_gini_importance.csv', index=False)
+df_imp.to_csv('exports/rf_gini_importance.csv', index=False)
 
 # Clean up and export permutation importances
 df_perm = pd.read_csv('wk4/rf_perm_importance.csv')
 df_perm.drop('delta_RMSE_std', axis=1, inplace=True)
 df_perm = df_perm.rename(columns={'descriptor': 'Descriptor', 'delta_RMSE': 'ΔRMSE'})
-df_perm.to_csv('tableau/inputs/rf_perm_importance.csv', index=False)
+df_perm.to_csv('exports/rf_perm_importance.csv', index=False)
+

@@ -15,4 +15,3 @@ The project serves as an introduction to data-driven chemical engineering workfl
 - Familiarize self with long-term, self-guided projects
 - Troubleshoot both coding and process roadblocks
 - Prepare self for future projects involving applications of ML and data science to chemical problems
-- Create outputs that support visualization in Tableau

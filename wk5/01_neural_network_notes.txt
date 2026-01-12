@@ -1,0 +1,118 @@
+Neural networks attempt to mirror human-like "learning".
+Classic example: recognizing different fonts as numbers or letters in low-res images.
+
+Treat neuron as a number between 0 and 1; that is all.
+Example connection: grayscale value of each pixel (0 = black; 1 = white)
+Number is known as the activation.
+This is the first layer of the network.
+
+The last layer has 10 neurons (one for each digit), each of which has an activation between 0 and 1.
+There are layers in between that do the thinking (sometimes 2, sometimes many more)
+
+Activations in one layer determine activations in the next layer
+Loosely similar to how neurons firing lead to other neurons firing in biological systems
+Activations in the first layer casacde through the intermediate layers to cause a certain outcome in the final layer.
+
+This layered learning process models a "learning" process by modeling subcomponents
+Example: lines within digits or characters
+This is the behavior for an ideal network -- small patterns create large patterns create one prediction
+Think of parsing speech (sounds -> syllables -> words -> sentences)
+
+Individual neurons work with weighted parameters based on the goal
+Think of weights as organized into a grid
+Example: trying to recognize "edges" in text via positive weights where we want positive activation and negative weights for negative activation (edges)
+The weighted sum is then squished into the sigmoid (logistic) function to maintain a domain from 0 to 1
+
+Computationally, this makes each layer very complex
+This CAN be done by hand, which takes away the black-box usual nature of neural networks
+However, this is usually done with matrix vector products (linear algebra)
+This makes coding much, much easier with object-oriented programming techniques
+
+Adapted from 3Blue1Brown: https://www.youtube.com/watch?v=aircAruvnKk
+
+----------
+
+Goal: generalize neural network behavior on training data to new datasets
+
+Cost functions are used with training data to "train" the network based on the accuracy/inaccuracy of their predictions
+This involves summing the squares of the residuals for a given output -> this is the Cost (MSE)
+We want to reduce cost as much as possible for the network to be as accurate as possible
+Cost: input is weights and biases, output is one metric, and the parameters are the many examples on training data
+
+We want to minimize the value of cost, so we take a test value and determine slope
+Based on the slope, we move (step) either to the negative or positive direction to eventually find a local minimum
+Steps get smaller as slope approaches 0 to avoid overshooting
+
+In multivariable environments (e.g. more than 1 input), we use negative gradients to find relative minima
+We average the cost function performance across all training data and minimize it to train the best model
+This is known as backpropogation, which is important but not as foundational as this info to understand intimately
+
+Problem: cost function must be continuous and differentiable (which is why computer neurons are not binary, like biological neurons are)
+
+The cost function encodes the importance of each weight and bias, which can be adjusted to improve the output of the cost function
+Alternate gradient interpretation: e.g. (3,1) indicates that nudging the x-value has triple the weight of nudging the y-value
+These calculations taken together indicate which weights and biases matter the most and least
+
+From this point, you can analyze results and tweak as necessary -- add more layers, for example
+
+The overall operation of this model often does not operate as ideally (subcomponents of pixel patterns e.g.)
+In this case, instead of edges, there are just very loose patterns the computer turns up on
+These loose patterns are proof that the machine is finding local minima, not absolute minima
+Further proof that the model is imperfect is that it is often very confidently wrong with images that have no digit at all
+
+This is a result of the idea that the model works with what it is trained on
+From the model's perspective, all that exists is digits so it is rewarded from guessing some digit even if it doesn't "know" at all
+This is a multilayer perceptron!!
+
+Adapted from 3Blue1Brown: https://www.youtube.com/watch?v=IHZwWFHWa-w
+
+----------
+
+For a relatively untrained model:
+We can only make changes to weights and biases, not final activations
+"Nudges" should be proportional to the difference from the target value
+Each weight has a different level of influence depending on the activation to which it relates
+Hebbian Theory parallel: neurons that fire together wire together
+
+The "desire" of each neuron, based on how much it needs to change to become the target value, is aggregated with all the others
+This collective instruction nudges each weight and bias to correct for each training sample
+Then, you average each nudge to actually change the weights and biases
+This is (loosely) proportional to the negative gradient
+
+This is extremely computationally intensive, so we seperate training data into mini-batches
+This takes our model towards the relative minimum, not in the quickest possible path, but with much less computational burden
+This is Computational Gradient Descent
+Eventually this will indeed converge to the relative minimum
+
+Adapted from 3Blue1Brown: https://www.youtube.com/watch?v=Ilg3gGewQ5U
+
+----------
+
+ReLU function converts linear transformation into a nonlinear function
+All negatives -> 0
+All positives -> sample
+Allows the network to model nonlinear relationships without computational strain
+Improvement over sigmoid by encouraging many zero activations
+Performed after each layer
+
+MSE is great as a cost function because it penalizes large errors and is differentiable
+RMSE is preferred over MSE for interpretability and unit-matching
+
+Parameters are all weights and biases across all layers
+Process: forward pass -> cost calculation -> backpropagation -> parameter update
+
+Adam optimizer: Adaptive Moment Estimation
+Tracks mean and variance of gradients to speed up convergence
+Learning rate is most important hyperparameter
+Standard MLP regressor today
+
+Dropout disables a fraction of neurons during training (p proportion are droppped)
+Facilitates co-adaptation and reduces overfitting
+Enable during training; disable during testing
+
+Deep learning simply means a neural network with many intermediate (deep) layers
+
+RF vs. MLP
+RF -> aggregation of decision trees; piecewise predictions; limited extrapolation; robust to noise
+MLP -> parametric and differentiable; smooth and continuous; better extrapolation; sensitive to dataset size, hyperparameters
+Overall, RF is a great first step by MLP is more powerful in the long-run and better models smooth nonlinear relationships

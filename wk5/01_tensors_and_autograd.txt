@@ -1,0 +1,33 @@
+Tensors
+
+Data structure similar to arrays and matrices
+Encode inputs, outputs, and parameters
+Closely resemble and can be formed from np arrays
+
+Tensors follow np array operations - transpose, slice, linear alg, etc.
+
+torch.cat - concatenates tensors along a dimension
+operations with a _ suffix are in-place (as with other modules)
+
+torch.from_numpy(array)
+
+Adapted from: https://docs.pytorch.org/tutorials/beginner/blitz/tensor_tutorial.html
+
+----------
+
+Autograd
+
+Automatic differentiation engine for training
+
+Autograd collects gradients which can be used to perform the vector calculus central to NN
+Computes the Jacobian
+
+Keeps a record of tensors and operations (resulting densors) in a directy acyclic graph (DAG)
+You can trace the DAG roots (output tensors) to leaves (input tensors) to compute gradients
+
+Forward pass: autograd runs the operation and maintains the gradient function in the DAG
+Backward pass: autograd computes and accumulates gradients, then propagates them back to the leaves
+
+Frozen parameters don't have their gradients computed (usually because you know they won't improve via autograd)
+
+Adapted from: https://docs.pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html

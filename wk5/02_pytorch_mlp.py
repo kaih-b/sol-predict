@@ -48,8 +48,7 @@ class SolubilityDataset(Dataset):
     # Tells PyTorch how many samples there are --> allows it to determine when it has iterated through an epoch
     def __len__(self):
         return self.X.shape[0]
-    # Defines how to fetch one sample via its index
-    # This builds batches 
+    # Defines how to fetch a sample via its index (DataLoader groups these into batches) 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
@@ -125,11 +124,11 @@ class MLPRegressor(nn.Module):
         # Creates hidden layers
         for h in hidden_sizes:
             layers.append(nn.Linear(in_dim, h)) # weights and biases
-            layers.append(nn.ReLU()) # sigmoid alternative ReLU (0 for negatives, positives stay same)
+            layers.append(nn.ReLU()) # ReLU (0 for negatives, positives stay same; alternative to sigmoid)
             layers.append(nn.Dropout(p=dropout_p)) # dropout set 
-            in_dim = h 
+            in_dim = h
 
-        # Adds the final output layer (input with size of last hidden layer; output wuth size 1 neuron)
+        # Adds the final output layer (input with size of last hidden layer; output with size 1 neuron)
         layers.append(nn.Linear(in_dim, 1))
 
         # Builds the model so that the layers are used sequentially from input -> hidden -> output
@@ -167,7 +166,7 @@ def train_model(model, train_loader, val_loader, loss_func, optimizer, num_epoch
             optimizer.step() # update weights
 
             inst_batch_size = X_batch.size(0) # final batch may be smaller than batch_size
-            tot_train_loss += loss.item() * inst_batch_size # adds the average loss across batch (loss.item()) multiplied by the batch_size
+            tot_train_loss += loss.item() * inst_batch_size # loss.item() is the mean loss over this batch; multiply by batch size to get total loss for this batch
             n_train += inst_batch_size
 
         avg_train_loss = tot_train_loss / n_train # after all batches have run, finds average loss across training set
@@ -195,7 +194,7 @@ def train_model(model, train_loader, val_loader, loss_func, optimizer, num_epoch
         # track best model based on minimum validation loss
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            best_state_dict = model.state_dict()
+            best_model_state = model.state_dict()
 
         # print results for each epoch
         print(f'Epoch {epoch+1}/{num_epochs}\n -Train MSE: {avg_train_loss:.4f}\n -Val MSE: {avg_val_loss:.4f}')
@@ -206,14 +205,84 @@ def train_model(model, train_loader, val_loader, loss_func, optimizer, num_epoch
     
     return train_losses, val_losses
 
-# Call training loop (predefined default hyperparameters)
+# Evaluate RMSE (apples-to-apples comparison with tuned RF)
+def evaluate_rmse(model, data_loader, loss_func):
+    model.eval()
+    tot_loss = 0.0
+    n_samples = 0
+
+    with torch.no_grad():
+        for X_batch, y_batch in data_loader:
+            preds = model(X_batch)
+            loss = loss_func(preds, y_batch) # MSE average across batch
+            batch_size = X_batch.size(0)
+            tot_loss += loss.item() * batch_size # batch mean MSE * batch size = total SE for this batch
+            n_samples += batch_size
+
+    mse = tot_loss / n_samples
+    rmse = np.sqrt(mse)
+    return rmse
+
+# Call training loop (predefined default hyperparameters); store RMSE
 train_losses, val_losses = train_model(model=model, train_loader=train_loader, val_loader=val_loader, loss_func=loss_func, optimizer=optimizer, num_epochs=num_epochs)
-print(np.min(train_losses), np.min(val_losses))
+mlp_rmse = evaluate_rmse(model, test_loader, loss_func)
+
 
 # Compare results with case study molecule
-case_SMILES = 'O=C1c2ccccc2C(=O)c3ccccc13'
-case_index = None
+case = pd.read_csv('wk4/worst_case_study.csv')
+rf_metrics = pd.read_csv('wk4/rf_final_metrics.csv')
+rf_rmse = rf_metrics['Test_RMSE'].iloc[0]
 
-row = df[df['SMILES'] == case_SMILES].iloc[0]
-label = f'SMILES: {case_SMILES}'
+row = case.iloc[0]
+case_smiles = row['SMILES']
+row_df = df[df['SMILES'] == case_smiles].iloc[0] # update row to capture all seven descriptors (only top 3 saved in worst_case_study.csv)
 
+# Save RF results for case study molecule
+exp_logS = float(row['exp_logS'])
+rf_pred_logS = float(row['pred_logS']) # RF prediction from wk4, taken from csv
+rf_error = float(row['residual'])
+rf_abs = float(row['abs_error'])
+
+# Build input for MLP with same full descriptor set as RF training
+x_case_np = row_df[descriptor_cols].values.astype('float32')
+x_case = torch.tensor(x_case_np).unsqueeze(0) # fix shape
+
+# Run the MLP model
+model.eval()
+with torch.no_grad():
+    mlp_pred_logS = model(x_case).item()
+mlp_error = mlp_pred_logS - exp_logS
+mlp_abs = abs(mlp_error)
+
+# Report metrics comparing the models
+report = ('---- Worst-Case Study Molecule -----\n'
+    f'\nSMILES: {case_smiles}'
+    f'\nExperimental logS: {exp_logS:.3f}\n'
+    f'\nRF predicted logS: {rf_pred_logS:.3f}'
+    f'\nRF error: {rf_error:+.3f}\n'
+    f'\nMLP predicted logS: {mlp_pred_logS:.3f}'
+    f'\nMLP error: {mlp_error:+.3f}\n'
+    f'\n|RF error| = {rf_abs:.3f}'
+    f'\n|MLP error| = {mlp_abs:.3f}\n')
+RMSE_report = (f'\nRF RMSE: {rf_rmse:.3f}\n'
+               f'MLP RMSE: {mlp_rmse:.3f}')
+
+# Save metrics to a markdown
+with open('wk5/rf_vs_baseline_mlp.md', 'w') as f:
+    f.write(report)
+    if rf_abs > mlp_abs:
+        f.write(f'\nBaseline MLP outperforms tuned RF for worst-case study molecule by {(rf_abs - mlp_abs):.3f}\n')
+    elif mlp_abs > rf_abs:
+        f.write(f'\nTuned RF outperforms baseline MLP for worst-case study molecule by {(mlp_abs - rf_abs):.3f}\n')
+    else:
+        f.write('\nBaseline MLP and tuned RF perform the same on the worst-case study molecule\n')
+    f.write(RMSE_report)
+
+# Log and save baseline MLP metrics for future comparison
+results_df = pd.DataFrame([{
+    'Model': 'Baseline MLP',
+    'Descriptors': 'final_descriptors',
+    'Test_RMSE': mlp_rmse,
+    'n_train': len(train_ds),
+    'n_test': len(test_ds)}])
+results_df.to_csv('wk5/mlp_baseline_metrics.csv', index=False)

@@ -9,7 +9,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
 # Recreate MLP setup
+
 #####
+
 seed = 42
 np.random.seed(seed)
 torch.manual_seed(seed)
@@ -26,6 +28,7 @@ y_test_np = y_test.values.astype(np.float32).reshape(-1, 1)
 y_train_t = torch.from_numpy(y_train_np)
 y_val_t = torch.from_numpy(y_val_np)
 y_test_t = torch.from_numpy(y_test_np)
+
 #####
 
 # Create and fit scaler, scale inputs
@@ -38,6 +41,7 @@ X_test_s = scaler.transform(X_test).astype(np.float32)
 # Continue re-running MLP setup
 
 #####
+
 class SolubilityDataset(Dataset):
     def __init__(self, X_tensor, y_tensor):
         self.X = X_tensor
@@ -146,6 +150,9 @@ test_rmse = evaluate_rmse(model, test_loader, loss_func)
 print(f'Best test RMSE: {test_rmse:.3f}')
 
 # Recreate hyperparameter sweep -- new setup may lead to different parameters being optimal; add new configs
+
+#####
+
 model_configs = [
     ('(32-16)_0.1', (32, 16), 0.1),
     ('(64-32)_0.1', (64, 32), 0.1),
@@ -172,7 +179,6 @@ opt_configs = {
 
 results = {}  # key: (model_name, opt_name)
 
-# Train a model for each combination
 for model_name, hidden, drop in model_configs:
     for opt_name, opt_params in opt_configs.items():
         model = MLPRegressor(n_features=n_features, hidden_sizes=hidden, dropout_p=drop)
@@ -199,3 +205,21 @@ for key, rec in results.items():
         best_rmse = rmse
         best_by_rmse = key
 print(f'Best RMSE config: {best_by_rmse}\nRMSE: {best_rmse:.3f}')
+
+#####
+
+# Save best RMSE config train/val curves
+train_curve = results[best_by_rmse]['train_curve']
+val_curve   = results[best_by_rmse]['val_curve']
+
+# Plot and save visualization (carryover from 03_hyperparameter_sweep.py)
+plt.figure()
+plt.plot(train_curve, label='Train loss (MSE)')
+plt.plot(val_curve, label='Val loss (MSE)')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title(f'Loss Curves (best by val): {best_by_rmse[0]} + {best_by_rmse[1]}')
+plt.legend()
+plt.grid(alpha = 0.5)
+plt.savefig('wk5/05_mlp_scaled_train_val_curve', dpi=300)
+plt.close()

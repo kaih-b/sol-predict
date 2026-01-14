@@ -88,6 +88,7 @@ The RF, beyond it already being hyperparameter tuned, also tends to perform well
 
 ## Next Steps
 
+- Re-run RF with validation split as used in MLP (80/10/10)
 - Lock the best hyperparameter combination from sweep, `(128-64)_0.2,adam_lr1e-3`, for reproducible training and validation
 - Repeat training across seeds and determine RMSE standard deviation to assess stability (with `seed = 42` still used for comparisons)
 - Test MLP performance with more descriptors (revert back to `wk4/expanded_descriptors.csv` and assess performance; add additional descriptors or molecular fingerprint metrics if results are promising)

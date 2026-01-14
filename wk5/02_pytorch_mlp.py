@@ -268,7 +268,7 @@ RMSE_report = (f'\nRF RMSE: {rf_rmse:.3f}\n'
                f'MLP RMSE: {mlp_rmse:.3f}')
 
 # Save metrics to a markdown
-with open('wk5/rf_vs_baseline_mlp.md', 'w') as f:
+with open('wk5/02_rf_vs_baseline_mlp.md', 'w') as f:
     f.write(report)
     if rf_abs > mlp_abs:
         f.write(f'\nBaseline MLP outperforms tuned RF for worst-case study molecule by {(rf_abs - mlp_abs):.3f}\n')
@@ -285,4 +285,4 @@ results_df = pd.DataFrame([{
     'Test_RMSE': mlp_rmse,
     'n_train': len(train_ds),
     'n_test': len(test_ds)}])
-results_df.to_csv('wk5/mlp_baseline_metrics.csv', index=False)
+results_df.to_csv('wk5/02_mlp_baseline_metrics.csv', index=False)

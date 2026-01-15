@@ -45,7 +45,7 @@ The configuration from the base descriptor set with the lowest validation loss, 
 
 Expanded descriptors lowered training error substantially, but failed to improve generalization (`test_rmse`). This is evidence that the MLP is aided in predicting training set solubility by additional features, but fails to generalize that prediction to unseen data. With these results, there is no need to revert to the expanded descriptor set.
 
-Between the two descriptor sets, best model performance also changed. Extended best uses some dropout (0.1) and very light weight decay (1e-5) with a wide model (256–128), while base best uses no dropout but moderately heavy weight decay (1e-3) with a deeper, smaller network (64–32–16–8).
+Between the two descriptor sets, best model performance also changed. Extended best uses some dropout (`0.1`) and very light weight decay (`1e-5`) with a wide model `(256–128)`, while base best uses no dropout but moderately heavy weight decay (`1e-3`) with a deeper, smaller network `(64–32–16–8)`.
 
 This is consistent with intuition. With more features, the model benefits from more capacity (wider and lighter decay) while with fewer features, the model benefits from stronger strinkage (heavy decay) to improvce generalization.
 

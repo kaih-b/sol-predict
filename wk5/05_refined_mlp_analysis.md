@@ -25,7 +25,7 @@ This step included refining the MLP by introducing three new variables:
 
 The configuration with the lowest validation loss, `val_mse = 0.308`, and `test_rmse = 0.636` was the following:
 
-- - `n_features = 11` (expanded descriptor set)
+- `n_features = 11` (expanded descriptor set)
 - `hidden_sizes = (256, 128)`
 - `dropout_p = 0.1`
 - `learning_rate = 2e-3`
@@ -35,7 +35,7 @@ This is consistent with previous interpretations of baseline MLP models.
 
 The configuration from the base descriptor set with the lowest validation loss, `val_mse = 0.363`, and `test_rmse = 0.642` was the following:
 
-- - `n_features = 7`
+- `n_features = 7`
 - `hidden_sizes = (64, 32, 16, 8)`
 - `dropout_p = 0.0`
 - `learning_rate = 2e-3`

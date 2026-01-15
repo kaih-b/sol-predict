@@ -205,7 +205,7 @@ for model_name, hidden, drop in model_configs:
 
 #####
 
-# Save best val config and evaluate RMSE
+# Save best val config
 best_by_val = min(results, key=lambda k: results[k]['best_val_mse'])
 
 # Rebuild best model

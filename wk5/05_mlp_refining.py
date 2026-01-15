@@ -56,6 +56,12 @@ X_test_s = scaler.transform(X_test).astype(np.float32)
 X_train_s_ext = scaler_ext.transform(X_train_ext).astype(np.float32)
 X_val_s_ext = scaler_ext.transform(X_val_ext).astype(np.float32)
 X_test_s_ext = scaler_ext.transform(X_test_ext).astype(np.float32)
+X_train_s_t = torch.from_numpy(X_train_s)
+X_val_s_t = torch.from_numpy(X_val_s)
+X_test_s_t = torch.from_numpy(X_test_s)
+X_train_s_ext_t = torch.from_numpy(X_train_s_ext)
+X_val_s_ext_t = torch.from_numpy(X_val_s_ext)
+X_test_s_ext_t = torch.from_numpy(X_test_s_ext)
 
 # Continue re-running MLP setup
 
@@ -70,12 +76,12 @@ class SolubilityDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
-train_ds = SolubilityDataset(X_train_s, y_train_t)
-val_ds = SolubilityDataset(X_val_s, y_val_t)
-test_ds = SolubilityDataset(X_test_s, y_test_t)
-train_ds_ext = SolubilityDataset(X_train_s_ext, y_train_t_ext)
-val_ds_ext = SolubilityDataset(X_val_s_ext, y_val_t_ext)
-test_ds_ext = SolubilityDataset(X_test_s_ext, y_test_t_ext)
+train_ds = SolubilityDataset(X_train_s_t, y_train_t)
+val_ds = SolubilityDataset(X_val_s_t, y_val_t)
+test_ds = SolubilityDataset(X_test_s_t, y_test_t)
+train_ds_ext = SolubilityDataset(X_train_s_ext_t, y_train_t_ext)
+val_ds_ext = SolubilityDataset(X_val_s_ext_t, y_val_t_ext)
+test_ds_ext = SolubilityDataset(X_test_s_ext_t, y_test_t_ext)
 batch_size = 64
 train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)

@@ -122,13 +122,12 @@ for seed in seeds:
     with open('wk4/rf_best_params.json', 'r') as f:
         best_params = json.load(f)
     rf_tuned = RandomForestRegressor(random_state = seed, n_jobs = -1, **best_params)
-    rf_tuned.fit(X_train, y_train)
     rf_tuned.fit(X_train_full, y_train_full)
 
     # Get test metrics
     y_test_pred_rf = rf_tuned.predict(X_test)
     test_rmse_rf = root_mean_squared_error(y_test, y_test_pred_rf)
-    results['RF'] = {'seed': seed, 'test_rmse': test_rmse_rf}
+    results[f'RF_{seed}'] = {'seed': seed, 'test_rmse': test_rmse_rf}
 
 # MLP Loop (base descriptors)
 for seed in seeds:
@@ -151,9 +150,13 @@ for seed in seeds:
     X_train_s = scaler.transform(X_train).astype(np.float32)
     X_val_s = scaler.transform(X_val).astype(np.float32)
     X_test_s = scaler.transform(X_test).astype(np.float32)
-    train_ds = SolubilityDataset(X_train_s, y_train_t)
-    val_ds = SolubilityDataset(X_val_s, y_val_t)
-    test_ds = SolubilityDataset(X_test_s, y_test_t)
+    X_train_s_t = torch.from_numpy(X_train_s)
+    X_val_s_t = torch.from_numpy(X_val_s)
+    X_test_s_t = torch.from_numpy(X_test_s)
+    
+    train_ds = SolubilityDataset(X_train_s_t, y_train_t)
+    val_ds = SolubilityDataset(X_val_s_t, y_val_t)
+    test_ds = SolubilityDataset(X_test_s_t, y_test_t)
     batch_size = 64
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
@@ -165,10 +168,11 @@ for seed in seeds:
 
     model = MLPRegressor(n_features=best['n_features'], hidden_sizes=best['hidden_sizes'], dropout_p=best['dropout_p'])
     optimizer = torch.optim.Adam(model.parameters(), lr=best['learning_rate'], weight_decay=best['weight_decay'])
+    train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
+    model.eval()
 
-    train_losses, val_losses = train_model(model=model, train_loader=train_loader, val_loader=val_loader, loss_func=loss_func, optimizer=optimizer, num_epochs=num_epochs)
-    mlp_rmse = evaluate_rmse(model, test_loader, loss_func)
+    test_rmse_mlp = evaluate_rmse(model, test_loader, loss_func)
 
-    results['MLP_base'] = {'seed': seed, 'test_rmse': test_rmse_rf}
+    results[f'MLP_base_{seed}'] = {'seed': seed, 'test_rmse': test_rmse_mlp}
 
 print(results)

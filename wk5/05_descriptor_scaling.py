@@ -61,7 +61,6 @@ test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
 # Collect constant hyperparameters
 n_features = X_train_s.shape[1]
-weight_decay = 1e-4
 num_epochs = 100
 loss_func = nn.MSELoss()
 
@@ -142,7 +141,7 @@ def evaluate_rmse(model, data_loader, loss_func):
 
 # Run best model from previous setup
 model = MLPRegressor(n_features=n_features, hidden_sizes=(128, 64), dropout_p=0.2)
-optimizer = torch.optim.Adam(model.parameters(), lr = 1e-3, weight_decay = weight_decay)
+optimizer = torch.optim.Adam(model.parameters(), lr = 1e-3, weight_decay = 1e-3)
 train_curve, val_curve, best_state, best_val = train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
 
 # Print RMSE
@@ -179,9 +178,18 @@ model_configs = [
     ('(256-128)_0.4', (256, 128), 0.4),
     ('(64-32-16-8)_0.4', (64, 32, 16, 8), 0.4)]
 opt_configs = {
-    'adam_lr2e-3': {'lr': 2e-3, 'weight_decay': weight_decay},
-    'adam_lr1e-3': {'lr': 1e-3, 'weight_decay': weight_decay},
-    'adam_lr5e-4': {'lr': 5e-4, 'weight_decay': weight_decay}}
+    'adam_lr2e-3_wd0': {'lr': 2e-3, 'weight_decay': 0},
+    'adam_lr1e-3_wd0': {'lr': 1e-3, 'weight_decay': 0},
+    'adam_lr5e-4_wd0': {'lr': 5e-4, 'weight_decay': 0},
+    'adam_lr2e-3_wd1e-5': {'lr': 2e-3, 'weight_decay': 1e-5},
+    'adam_lr1e-3_wd1e-5': {'lr': 1e-3, 'weight_decay': 1e-5},
+    'adam_lr5e-4_wd1e-5': {'lr': 5e-4, 'weight_decay': 1e-5},
+    'adam_lr2e-3_wd1e-4': {'lr': 2e-3, 'weight_decay': 1e-4},
+    'adam_lr1e-3_wd1e-4': {'lr': 1e-3, 'weight_decay': 1e-4},
+    'adam_lr5e-4_wd1e-4': {'lr': 5e-4, 'weight_decay': 1e-4},
+    'adam_lr2e-3_wd1e-3': {'lr': 2e-3, 'weight_decay': 1e-3},
+    'adam_lr1e-3_wd1e-3': {'lr': 1e-3, 'weight_decay': 1e-3},
+    'adam_lr5e-4_wd1e-3': {'lr': 5e-4, 'weight_decay': 1e-3}}
 
 results = {}  # key: (model_name, opt_name)
 

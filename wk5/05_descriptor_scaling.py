@@ -154,6 +154,12 @@ print(f'Best test RMSE: {test_rmse:.3f}')
 #####
 
 model_configs = [
+    ('(32-16)_0.0', (32, 16), 0.0),
+    ('(64-32)_0.0', (64, 32), 0.0),
+    ('(128-64)_0.0', (128, 64), 0.0),
+    ('(64-32-16)_0.0', (64, 32, 16), 0.0),
+    ('(256-128)_0.0', (256, 128), 0.0),
+    ('(64-32-16-8)_0.0', (64, 32, 16, 8), 0.0),
     ('(32-16)_0.1', (32, 16), 0.1),
     ('(64-32)_0.1', (64, 32), 0.1),
     ('(128-64)_0.1', (128, 64), 0.1),
@@ -184,33 +190,35 @@ for model_name, hidden, drop in model_configs:
         model = MLPRegressor(n_features=n_features, hidden_sizes=hidden, dropout_p=drop)
         optimizer = torch.optim.Adam(model.parameters(), **opt_params)
         train_curve, val_curve, best_state, best_val = train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
-        # Store results in a dictionary with all params
+        test_rmse = evaluate_rmse(model, test_loader, loss_func)
+
         results[(model_name, opt_name)] = {
             'hidden': hidden,
             'dropout': drop,
-            'opt': opt_params,
+            'lr': opt_params['lr'],
+            'weight_decay': opt_params['weight_decay'],
             'train_curve': train_curve,
             'val_curve': val_curve,
-            'best_val': best_val,
-            'best_state': best_state}
-best_rmse = float('inf')
-best_by_rmse = None
-for key, rec in results.items():
-    model_name, opt_name = key
-    model = MLPRegressor(n_features=n_features, hidden_sizes=rec['hidden'], dropout_p=rec['dropout'])
-    model.load_state_dict(rec['best_state'])
-    rmse = evaluate_rmse(model, test_loader, loss_func)
-    rec['test_rmse'] = rmse
-    if rmse < best_rmse:
-        best_rmse = rmse
-        best_by_rmse = key
-print(f'Best RMSE config: {best_by_rmse}\nRMSE: {best_rmse:.3f}')
+            'best_val_mse': best_val,
+            'best_state': best_state,
+            'test_rmse': test_rmse}
 
 #####
 
-# Save best RMSE config train/val curves
-train_curve = results[best_by_rmse]['train_curve']
-val_curve   = results[best_by_rmse]['val_curve']
+# Save best val config and evaluate RMSE
+best_by_val = min(results, key=lambda k: results[k]['best_val_mse'])
+
+# Rebuild best model
+best_model_obj = MLPRegressor(n_features=n_features, hidden_sizes=results[best_by_val]['hidden'], dropout_p=results[best_by_val]['dropout'])
+best_model_obj.load_state_dict(results[best_by_val]['best_state'])
+
+# Find and print best model's RMSE
+rmse_for_best_val = evaluate_rmse(best_model_obj, test_loader, loss_func)
+print(f'Best config: {best_by_val}\nRMSE: {rmse_for_best_val:.3f}')
+
+# Save best val config train/val curves
+train_curve = results[best_by_val]['train_curve']
+val_curve   = results[best_by_val]['val_curve']
 
 # Plot and save visualization (carryover from 03_hyperparameter_sweep.py)
 plt.figure()
@@ -218,8 +226,23 @@ plt.plot(train_curve, label='Train loss (MSE)')
 plt.plot(val_curve, label='Val loss (MSE)')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
-plt.title(f'Loss Curves (best by val): {best_by_rmse[0]} + {best_by_rmse[1]}')
+plt.title(f'Loss Curves (best by val): {best_by_val[0]} + {best_by_val[1]}')
 plt.legend()
 plt.grid(alpha = 0.5)
 plt.savefig('wk5/05_mlp_scaled_train_val_curve', dpi=300)
 plt.close()
+
+# Save full results table
+rows = []
+for (mname, oname), rec in results.items():
+    rows.append({
+        'model': mname,
+        'optimizer': oname,
+        'hidden': str(rec['hidden']),
+        'dropout': rec['dropout'],
+        'lr': rec['lr'],
+        'weight_decay': rec['weight_decay'],
+        'best_val_mse': rec['best_val_mse'],
+        'test_rmse': rec['test_rmse']})
+results_df = pd.DataFrame(rows).sort_values(['best_val_mse', 'test_rmse'])
+results_df.to_csv('wk5/05_scaled_mlp_hyperparam_sweep_results.csv', index=False)

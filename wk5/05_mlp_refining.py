@@ -208,7 +208,7 @@ opt_configs = {
     'adam_lr1e-3_wd1e-3': {'lr': 1e-3, 'weight_decay': 1e-3},
     'adam_lr5e-4_wd1e-3': {'lr': 5e-4, 'weight_decay': 1e-3}}
 
-results = {}  # key: (model_name, opt_name, set)
+results = {}  # key: (model_name, opt_name, feature-set)
 
 for model_name, hidden, drop in model_configs:
     for opt_name, opt_params in opt_configs.items():
@@ -217,7 +217,7 @@ for model_name, hidden, drop in model_configs:
         train_curve, val_curve, best_state, best_val = train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
         test_rmse = evaluate_rmse(model, test_loader, loss_func)
 
-        results[(model_name, opt_name, 'base')] = {
+        results[(model_name, opt_name, n_features)] = {
             'hidden': hidden,
             'dropout': drop,
             'lr': opt_params['lr'],
@@ -228,7 +228,7 @@ for model_name, hidden, drop in model_configs:
             'best_state': best_state,
             'test_rmse': test_rmse,
             'n_features': n_features}
-
+# re-run for extended feature-set
 for model_name, hidden, drop in model_configs:
     for opt_name, opt_params in opt_configs.items():
         model = MLPRegressor(n_features=n_features_ext, hidden_sizes=hidden, dropout_p=drop)
@@ -236,7 +236,7 @@ for model_name, hidden, drop in model_configs:
         train_curve, val_curve, best_state, best_val = train_model(model, train_loader_ext, val_loader_ext, loss_func, optimizer, num_epochs)
         test_rmse = evaluate_rmse(model, test_loader_ext, loss_func)
 
-        results[(model_name, opt_name, 'ext')] = {
+        results[(model_name, opt_name, n_features_ext)] = {
             'hidden': hidden,
             'dropout': drop,
             'lr': opt_params['lr'],
@@ -258,8 +258,8 @@ best_model_obj = MLPRegressor(n_features=results[best_by_val]["n_features"], hid
 best_model_obj.load_state_dict(results[best_by_val]["best_state"])
 
 # Find and print best model's RMSE, config, and feature-set
-best_set = best_by_val[2]
-best_test_loader = test_loader if best_set == "base" else test_loader_ext
+best_n_features = best_by_val[2]
+best_test_loader = test_loader if best_n_features == X_train_s.shape[1] else test_loader_ext
 rmse_for_best_val = evaluate_rmse(best_model_obj, best_test_loader, loss_func)
 features_for_best_val = results[best_by_val]["n_features"]
 print(f'Best config: {best_by_val}\nRMSE: {rmse_for_best_val:.3f}\nFeatures: {features_for_best_val}')
@@ -277,22 +277,21 @@ plt.ylabel('Loss')
 plt.title(f'Loss Curves (best by val): {best_by_val[0]} + {best_by_val[1]}')
 plt.legend()
 plt.grid(alpha = 0.5)
-plt.savefig('wk5/05_mlp_scaled_train_val_curve', dpi=300)
+plt.savefig('wk5/05_refined_mlp_train_val_curve', dpi=300)
 plt.close()
 
-# Save full results table
+# Save full results table (mostly also carryover)
 rows = []
-for (mname, oname, feature_input), rec in results.items():
+for (mname, oname, f_set), rec in results.items():
     rows.append({
         'model': mname,
         'optimizer': oname,
-        'feature_input': feature_input,
+        'n_features': rec['n_features'],
         'hidden': str(rec['hidden']),
         'dropout': rec['dropout'],
         'lr': rec['lr'],
         'weight_decay': rec['weight_decay'],
         'best_val_mse': rec['best_val_mse'],
-        'test_rmse': rec['test_rmse'],
-        'n_features': rec['n_features']})
+        'test_rmse': rec['test_rmse']})
 results_df = pd.DataFrame(rows).sort_values(['best_val_mse', 'test_rmse'])
-results_df.to_csv('wk5/05_scaled_mlp_hyperparam_sweep_results.csv', index=False)
+results_df.to_csv('wk5/05_refined_mlp_hyperparam_sweep_results.csv', index=False)

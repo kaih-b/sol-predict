@@ -31,12 +31,31 @@ y_test_t = torch.from_numpy(y_test_np)
 
 #####
 
+# Add extended descriptor set to see if MLP is feature limited
+df_ext = pd.read_csv('wk4/expanded_descriptors.csv')
+descriptor_cols_ext = [c for c in df_ext.columns if c not in [target_col, 'SMILES']]
+X_ext = df_ext[descriptor_cols_ext]
+y_ext = df_ext[target_col]
+X_train_ext, X_temp_ext, y_train_ext, y_temp_ext = train_test_split(X_ext, y_ext, test_size = 0.2, random_state = seed)
+X_val_ext, X_test_ext, y_val_ext, y_test_ext = train_test_split(X_temp_ext, y_temp_ext, test_size=0.5, random_state=seed)
+y_train_np_ext = y_train_ext.values.astype(np.float32).reshape(-1, 1)
+y_val_np_ext = y_val_ext.values.astype(np.float32).reshape(-1, 1)
+y_test_np_ext = y_test_ext.values.astype(np.float32).reshape(-1, 1)
+y_train_t_ext = torch.from_numpy(y_train_np_ext)
+y_val_t_ext = torch.from_numpy(y_val_np_ext)
+y_test_t_ext = torch.from_numpy(y_test_np_ext)
+
 # Create and fit scaler, scale inputs
 scaler = StandardScaler()
 scaler.fit(X_train)
+scaler_ext = StandardScaler()
+scaler_ext.fit(X_train_ext)
 X_train_s = scaler.transform(X_train).astype(np.float32)
 X_val_s = scaler.transform(X_val).astype(np.float32)
 X_test_s = scaler.transform(X_test).astype(np.float32)
+X_train_s_ext = scaler_ext.transform(X_train_ext).astype(np.float32)
+X_val_s_ext = scaler_ext.transform(X_val_ext).astype(np.float32)
+X_test_s_ext = scaler_ext.transform(X_test_ext).astype(np.float32)
 
 # Continue re-running MLP setup
 
@@ -54,13 +73,20 @@ class SolubilityDataset(Dataset):
 train_ds = SolubilityDataset(X_train_s, y_train_t)
 val_ds = SolubilityDataset(X_val_s, y_val_t)
 test_ds = SolubilityDataset(X_test_s, y_test_t)
+train_ds_ext = SolubilityDataset(X_train_s_ext, y_train_t_ext)
+val_ds_ext = SolubilityDataset(X_val_s_ext, y_val_t_ext)
+test_ds_ext = SolubilityDataset(X_test_s_ext, y_test_t_ext)
 batch_size = 64
 train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+train_loader_ext = DataLoader(train_ds_ext, batch_size=batch_size, shuffle=True)
+val_loader_ext = DataLoader(val_ds_ext, batch_size=batch_size, shuffle=False)
+test_loader_ext = DataLoader(test_ds_ext, batch_size=batch_size, shuffle=False)
 
 # Collect constant hyperparameters
 n_features = X_train_s.shape[1]
+n_features_ext = X_train_s_ext.shape[1]
 num_epochs = 100
 loss_func = nn.MSELoss()
 
@@ -139,16 +165,7 @@ def evaluate_rmse(model, data_loader, loss_func):
 
 #####
 
-# Run best model from previous setup
-model = MLPRegressor(n_features=n_features, hidden_sizes=(128, 64), dropout_p=0.2)
-optimizer = torch.optim.Adam(model.parameters(), lr = 1e-3, weight_decay = 1e-3)
-train_curve, val_curve, best_state, best_val = train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
-
-# Print RMSE
-test_rmse = evaluate_rmse(model, test_loader, loss_func)
-print(f'Best test RMSE: {test_rmse:.3f}')
-
-# Recreate hyperparameter sweep -- new setup may lead to different parameters being optimal; add new configs
+# Recreate hyperparameter sweep -- new setup and extended descriptors may lead to different parameters being optimal; add new configs
 
 #####
 
@@ -191,7 +208,7 @@ opt_configs = {
     'adam_lr1e-3_wd1e-3': {'lr': 1e-3, 'weight_decay': 1e-3},
     'adam_lr5e-4_wd1e-3': {'lr': 5e-4, 'weight_decay': 1e-3}}
 
-results = {}  # key: (model_name, opt_name)
+results = {}  # key: (model_name, opt_name, set)
 
 for model_name, hidden, drop in model_configs:
     for opt_name, opt_params in opt_configs.items():
@@ -200,7 +217,7 @@ for model_name, hidden, drop in model_configs:
         train_curve, val_curve, best_state, best_val = train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
         test_rmse = evaluate_rmse(model, test_loader, loss_func)
 
-        results[(model_name, opt_name)] = {
+        results[(model_name, opt_name, 'base')] = {
             'hidden': hidden,
             'dropout': drop,
             'lr': opt_params['lr'],
@@ -209,20 +226,43 @@ for model_name, hidden, drop in model_configs:
             'val_curve': val_curve,
             'best_val_mse': best_val,
             'best_state': best_state,
-            'test_rmse': test_rmse}
+            'test_rmse': test_rmse,
+            'n_features': n_features}
+
+for model_name, hidden, drop in model_configs:
+    for opt_name, opt_params in opt_configs.items():
+        model = MLPRegressor(n_features=n_features_ext, hidden_sizes=hidden, dropout_p=drop)
+        optimizer = torch.optim.Adam(model.parameters(), **opt_params)
+        train_curve, val_curve, best_state, best_val = train_model(model, train_loader_ext, val_loader_ext, loss_func, optimizer, num_epochs)
+        test_rmse = evaluate_rmse(model, test_loader_ext, loss_func)
+
+        results[(model_name, opt_name, 'ext')] = {
+            'hidden': hidden,
+            'dropout': drop,
+            'lr': opt_params['lr'],
+            'weight_decay': opt_params['weight_decay'],
+            'train_curve': train_curve,
+            'val_curve': val_curve,
+            'best_val_mse': best_val,
+            'best_state': best_state,
+            'test_rmse': test_rmse,
+            'n_features': n_features_ext}
 
 #####
 
 # Save best val config
-best_by_val = min(results, key=lambda k: results[k]['best_val_mse'])
+best_by_val = min(results, key=lambda k: results[k]["best_val_mse"])
 
 # Rebuild best model
-best_model_obj = MLPRegressor(n_features=n_features, hidden_sizes=results[best_by_val]['hidden'], dropout_p=results[best_by_val]['dropout'])
-best_model_obj.load_state_dict(results[best_by_val]['best_state'])
+best_model_obj = MLPRegressor(n_features=results[best_by_val]["n_features"], hidden_sizes=results[best_by_val]["hidden"], dropout_p=results[best_by_val]["dropout"],)
+best_model_obj.load_state_dict(results[best_by_val]["best_state"])
 
-# Find and print best model's RMSE
-rmse_for_best_val = evaluate_rmse(best_model_obj, test_loader, loss_func)
-print(f'Best config: {best_by_val}\nRMSE: {rmse_for_best_val:.3f}')
+# Find and print best model's RMSE, config, and feature-set
+best_set = best_by_val[2]
+best_test_loader = test_loader if best_set == "base" else test_loader_ext
+rmse_for_best_val = evaluate_rmse(best_model_obj, best_test_loader, loss_func)
+features_for_best_val = results[best_by_val]["n_features"]
+print(f'Best config: {best_by_val}\nRMSE: {rmse_for_best_val:.3f}\nFeatures: {features_for_best_val}')
 
 # Save best val config train/val curves
 train_curve = results[best_by_val]['train_curve']
@@ -242,15 +282,17 @@ plt.close()
 
 # Save full results table
 rows = []
-for (mname, oname), rec in results.items():
+for (mname, oname, feature_input), rec in results.items():
     rows.append({
         'model': mname,
         'optimizer': oname,
+        'feature_input': feature_input,
         'hidden': str(rec['hidden']),
         'dropout': rec['dropout'],
         'lr': rec['lr'],
         'weight_decay': rec['weight_decay'],
         'best_val_mse': rec['best_val_mse'],
-        'test_rmse': rec['test_rmse']})
+        'test_rmse': rec['test_rmse'],
+        'n_features': rec['n_features']})
 results_df = pd.DataFrame(rows).sort_values(['best_val_mse', 'test_rmse'])
 results_df.to_csv('wk5/05_scaled_mlp_hyperparam_sweep_results.csv', index=False)

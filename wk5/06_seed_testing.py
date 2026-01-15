@@ -11,7 +11,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error
 
 # Define seeds to test and best models 
-seeds = [0, 1, 2, 3, 4]
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 best = {'n_features': 7, 'hidden_sizes': (64, 32, 16, 8), 'dropout_p': 0.0, 'learning_rate': 2e-3, 'weight_decay': 1e-3}
 best_ext = {'n_features': 11, 'hidden_sizes': (256, 128), 'dropout_p': 0.1, 'learning_rate': 2e-3, 'weight_decay': 1e-5}
 
@@ -108,7 +108,8 @@ def evaluate_rmse(model, data_loader, loss_func):
     mse = tot_loss / n
     return float(np.sqrt(mse))
 
-results = {} # key: model (RF or MLP)
+# Save each model's test RMSE
+rows = []
 
 # RF Loop
 for seed in seeds:
@@ -127,7 +128,7 @@ for seed in seeds:
     # Get test metrics
     y_test_pred_rf = rf_tuned.predict(X_test)
     test_rmse_rf = root_mean_squared_error(y_test, y_test_pred_rf)
-    results[f'RF_{seed}'] = {'seed': seed, 'test_rmse': test_rmse_rf}
+    rows.append({'model': 'RF', 'seed': seed, 'test_rmse': test_rmse_rf})
 
 # MLP Loop (base descriptors)
 for seed in seeds:
@@ -145,6 +146,7 @@ for seed in seeds:
     y_val_t = torch.from_numpy(y_val_np)
     y_test_t = torch.from_numpy(y_test_np)
 
+    # Fit scaler; covert to tensors
     scaler = StandardScaler()
     scaler.fit(X_train)
     X_train_s = scaler.transform(X_train).astype(np.float32)
@@ -153,7 +155,8 @@ for seed in seeds:
     X_train_s_t = torch.from_numpy(X_train_s)
     X_val_s_t = torch.from_numpy(X_val_s)
     X_test_s_t = torch.from_numpy(X_test_s)
-    
+
+    # Get datasets and train loaders
     train_ds = SolubilityDataset(X_train_s_t, y_train_t)
     val_ds = SolubilityDataset(X_val_s_t, y_val_t)
     test_ds = SolubilityDataset(X_test_s_t, y_test_t)
@@ -162,17 +165,71 @@ for seed in seeds:
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
+    # Constant hyperparams
     n_features = X_train_s.shape[1]
     num_epochs = 100
     loss_func = nn.MSELoss()
 
+    # Train model
     model = MLPRegressor(n_features=best['n_features'], hidden_sizes=best['hidden_sizes'], dropout_p=best['dropout_p'])
     optimizer = torch.optim.Adam(model.parameters(), lr=best['learning_rate'], weight_decay=best['weight_decay'])
     train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
     model.eval()
 
+    # Get test metrics
     test_rmse_mlp = evaluate_rmse(model, test_loader, loss_func)
+    rows.append({'model': 'MLP_base', 'seed': seed, 'test_rmse': test_rmse_mlp})
 
-    results[f'MLP_base_{seed}'] = {'seed': seed, 'test_rmse': test_rmse_mlp}
+# MLP Loop (extended descriptors)
+for seed in seeds:
+    # Set seeds
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
-print(results)
+    # Split train/test/vals for each seed
+    X_train_ext, X_temp_ext, y_train_ext, y_temp_ext = train_test_split(X_ext, y_ext, test_size = 0.2, random_state = seed)
+    X_val_ext, X_test_ext, y_val_ext, y_test_ext = train_test_split(X_temp_ext, y_temp_ext, test_size = 0.5, random_state = seed)
+    y_train_np_ext = y_train_ext.values.astype(np.float32).reshape(-1, 1)
+    y_val_np_ext = y_val_ext.values.astype(np.float32).reshape(-1, 1)
+    y_test_np_ext = y_test_ext.values.astype(np.float32).reshape(-1, 1)
+    y_train_t_ext = torch.from_numpy(y_train_np_ext)
+    y_val_t_ext = torch.from_numpy(y_val_np_ext)
+    y_test_t_ext = torch.from_numpy(y_test_np_ext)
+
+    # Fit scaler; covert to tensors
+    scaler = StandardScaler()
+    scaler.fit(X_train_ext)
+    X_train_s_ext = scaler.transform(X_train_ext).astype(np.float32)
+    X_val_s_ext = scaler.transform(X_val_ext).astype(np.float32)
+    X_test_s_ext = scaler.transform(X_test_ext).astype(np.float32)
+    X_train_s_ext_t = torch.from_numpy(X_train_s_ext)
+    X_val_s_ext_t = torch.from_numpy(X_val_s_ext)
+    X_test_s_ext_t = torch.from_numpy(X_test_s_ext)
+
+    # Get datasets and train loaders
+    train_ds_ext = SolubilityDataset(X_train_s_ext_t, y_train_t_ext)
+    val_ds_ext = SolubilityDataset(X_val_s_ext_t, y_val_t_ext)
+    test_ds_ext = SolubilityDataset(X_test_s_ext_t, y_test_t_ext)
+    train_loader_ext = DataLoader(train_ds_ext, batch_size=batch_size, shuffle=True)
+    val_loader_ext = DataLoader(val_ds_ext, batch_size=batch_size, shuffle=False)
+    test_loader_ext = DataLoader(test_ds_ext, batch_size=batch_size, shuffle=False)
+
+    # Constant hyperparams
+    n_features = X_train_s.shape[1]
+    num_epochs = 100
+    loss_func = nn.MSELoss()
+
+    # Train model
+    model_ext = MLPRegressor(n_features=best_ext['n_features'], hidden_sizes=best_ext['hidden_sizes'], dropout_p=best_ext['dropout_p'])
+    optimizer_ext = torch.optim.Adam(model.parameters(), lr=best_ext['learning_rate'], weight_decay=best_ext['weight_decay'])
+    train_model(model_ext, train_loader_ext, val_loader_ext, loss_func, optimizer_ext, num_epochs)
+    model.eval()
+
+    # Get test metrics
+    test_rmse_mlp_ext = evaluate_rmse(model_ext, test_loader_ext, loss_func)
+    rows.append({'model': 'MLP_ext', 'seed': seed, 'test_rmse': test_rmse_mlp_ext})
+
+results_df = pd.DataFrame(rows)
+summary_df = (results_df.groupby("model")["test_rmse"].agg(["mean", "std", "min", "max"]).reset_index())
+print("\nRMSE summary (mean, std, min, max) per model:")
+print(summary_df)

@@ -26,7 +26,7 @@ y_train_full = np.concatenate([y_train, y_val])
 # Load optimized RF model
 with open('wk4/rf_best_params.json', 'r') as f:
     best_params = json.load(f)
-rf_tuned = RandomForestRegressor(random_state = 42, n_job = -1, **best_params)
+rf_tuned = RandomForestRegressor(random_state = 42, n_jobs = -1, **best_params)
 rf_tuned.fit(X_train, y_train)
 
 # Fit model

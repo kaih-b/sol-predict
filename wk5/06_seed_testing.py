@@ -12,8 +12,8 @@ from sklearn.metrics import root_mean_squared_error
 
 # Define seeds to test and best models 
 seeds = [0, 1, 2, 3, 4]
-best = {'hidden_sizes': (64, 32, 16, 8), 'dropout_p': 0.0, 'learning_rate': 2e-3, 'weight_decay': 1e-3}
-best_ext = {'hidden_sizes': (256, 128), 'dropout_p': 0.1, 'learning_rate': 2e-3, 'weight_decay': 1e-5}
+best = {'n_features': 7, 'hidden_sizes': (64, 32, 16, 8), 'dropout_p': 0.0, 'learning_rate': 2e-3, 'weight_decay': 1e-3}
+best_ext = {'n_features': 11, 'hidden_sizes': (256, 128), 'dropout_p': 0.1, 'learning_rate': 2e-3, 'weight_decay': 1e-5}
 
 # Read in info
 df = pd.read_csv('wk4/final_descriptors.csv')
@@ -108,6 +108,8 @@ def evaluate_rmse(model, data_loader, loss_func):
     mse = tot_loss / n
     return float(np.sqrt(mse))
 
+results = {} # key: model (RF or MLP)
+
 # RF Loop
 for seed in seeds:
     # Split train/test/vals for each seed
@@ -119,25 +121,14 @@ for seed in seeds:
     # Create and fit RF model
     with open('wk4/rf_best_params.json', 'r') as f:
         best_params = json.load(f)
-    rf_tuned = RandomForestRegressor(random_state = seed, n_job = -1, **best_params)
+    rf_tuned = RandomForestRegressor(random_state = seed, n_jobs = -1, **best_params)
     rf_tuned.fit(X_train, y_train)
     rf_tuned.fit(X_train_full, y_train_full)
 
     # Get test metrics
-    y_test_pred = rf_tuned.predict(X_test)
-    test_rmse_rf = root_mean_squared_error(y_test, y_test_pred)
-    resid_rf = y_test - y_test_pred
-
-    result = {
-        "model": 'RF',
-        "seed": seed,
-        "test_rmse": test_rmse,
-        "y_test_true": y_test_np,
-        "y_test_pred": y_pred_np,
-        "residuals": residuals,
-        "train_mse_curve": np.array(train_mse_curve),
-        "val_mse_curve": np.array(val_mse_curve),
-    }
+    y_test_pred_rf = rf_tuned.predict(X_test)
+    test_rmse_rf = root_mean_squared_error(y_test, y_test_pred_rf)
+    results['RF'] = {'seed': seed, 'test_rmse': test_rmse_rf}
 
 # MLP Loop (base descriptors)
 for seed in seeds:
@@ -171,3 +162,13 @@ for seed in seeds:
     n_features = X_train_s.shape[1]
     num_epochs = 100
     loss_func = nn.MSELoss()
+
+    model = MLPRegressor(n_features=best['n_features'], hidden_sizes=best['hidden_sizes'], dropout_p=best['dropout_p'])
+    optimizer = torch.optim.Adam(model.parameters(), lr=best['learning_rate'], weight_decay=best['weight_decay'])
+
+    train_losses, val_losses = train_model(model=model, train_loader=train_loader, val_loader=val_loader, loss_func=loss_func, optimizer=optimizer, num_epochs=num_epochs)
+    mlp_rmse = evaluate_rmse(model, test_loader, loss_func)
+
+    results['MLP_base'] = {'seed': seed, 'test_rmse': test_rmse_rf}
+
+print(results)

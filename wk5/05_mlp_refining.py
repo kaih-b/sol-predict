@@ -251,17 +251,17 @@ for model_name, hidden, drop in model_configs:
 #####
 
 # Save best val config
-best_by_val = min(results, key=lambda k: results[k]["best_val_mse"])
+best_by_val = min(results, key=lambda k: results[k]['best_val_mse'])
 
 # Rebuild best model
-best_model_obj = MLPRegressor(n_features=results[best_by_val]["n_features"], hidden_sizes=results[best_by_val]["hidden"], dropout_p=results[best_by_val]["dropout"],)
-best_model_obj.load_state_dict(results[best_by_val]["best_state"])
+best_model_obj = MLPRegressor(n_features=results[best_by_val]['n_features'], hidden_sizes=results[best_by_val]['hidden'], dropout_p=results[best_by_val]['dropout'],)
+best_model_obj.load_state_dict(results[best_by_val]['best_state'])
 
 # Find and print best model's RMSE, config, and feature-set
 best_n_features = best_by_val[2]
 best_test_loader = test_loader if best_n_features == X_train_s.shape[1] else test_loader_ext
 rmse_for_best_val = evaluate_rmse(best_model_obj, best_test_loader, loss_func)
-features_for_best_val = results[best_by_val]["n_features"]
+features_for_best_val = results[best_by_val]['n_features']
 print(f'Best config: {best_by_val}\nRMSE: {rmse_for_best_val:.3f}\nFeatures: {features_for_best_val}')
 
 # Save best val config train/val curves

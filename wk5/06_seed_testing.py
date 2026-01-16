@@ -2,7 +2,6 @@ import json
 import numpy as np
 import pandas as pd
 import torch
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torch import nn
 from sklearn.preprocessing import StandardScaler
@@ -11,7 +10,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error
 
 # Define seeds to test and best models 
-seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+seeds = list(range(25))
 best = {'n_features': 7, 'hidden_sizes': (64, 32, 16, 8), 'dropout_p': 0.0, 'learning_rate': 2e-3, 'weight_decay': 1e-3}
 best_ext = {'n_features': 11, 'hidden_sizes': (256, 128), 'dropout_p': 0.1, 'learning_rate': 2e-3, 'weight_decay': 1e-5}
 
@@ -21,10 +20,14 @@ target_col = 'logS'
 descriptor_cols = [c for c in df.columns if c not in [target_col, 'SMILES']]
 X = df[descriptor_cols]
 y = df[target_col]
+
 df_ext = pd.read_csv('wk4/expanded_descriptors.csv')
 descriptor_cols_ext = [c for c in df_ext.columns if c not in [target_col, 'SMILES']]
 X_ext = df_ext[descriptor_cols_ext]
 y_ext = df_ext[target_col]
+
+with open('wk4/rf_best_params.json', 'r') as f:
+    best_params = json.load(f)
 
 # Define MLP classes and RMSE function
 class SolubilityDataset(Dataset):
@@ -93,7 +96,7 @@ def train_model(model, train_loader, val_loader, loss_func, optimizer, num_epoch
             best_state = {k: v.detach().clone() for k, v in sd.items()}
     if best_state is not None:
         model.load_state_dict(best_state)
-    return train_losses, val_losses, best_state, best_val_loss
+    return train_losses, val_losses
 
 def evaluate_rmse(model, data_loader, loss_func):
     model.eval()
@@ -108,30 +111,37 @@ def evaluate_rmse(model, data_loader, loss_func):
     mse = tot_loss / n
     return float(np.sqrt(mse))
 
-# Save each model's test RMSE
+# Save each model's test RMSE and predicted values for comparison and residual plots, respectively
 rows = []
+per_iteration_rows = []
 
 # RF Loop
 for seed in seeds:
     # Split train/test/vals for each seed
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size = 0.2, random_state = seed)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size = 0.5, random_state = seed)
-    X_train_full = np.concatenate([X_train, X_val])
-    y_train_full = np.concatenate([y_train, y_val])
-    X_train_full_df = pd.DataFrame(X_train_full, columns=X_train.columns)
-    y_train_full_s = pd.Series(y_train_full, name=y_train.name)
-
+    X_train_full_df = pd.concat([X_train, X_val], axis=0)
+    y_train_full_s = pd.concat([y_train, y_val], axis=0)
 
     # Create and fit RF model
-    with open('wk4/rf_best_params.json', 'r') as f:
-        best_params = json.load(f)
     rf_tuned = RandomForestRegressor(random_state = seed, n_jobs = -1, **best_params)
     rf_tuned.fit(X_train_full_df, y_train_full_s)
 
-    # Get test metrics
+    # Get RMSE metrics
     y_test_pred_rf = rf_tuned.predict(X_test)
     test_rmse_rf = root_mean_squared_error(y_test, y_test_pred_rf)
     rows.append({'model': 'RF', 'seed': seed, 'test_rmse': test_rmse_rf})
+
+    # Get resid metrics
+    resid_rf = y_test - y_test_pred_rf
+    for pos, idx in enumerate(y_test.index):
+        per_iteration_rows.append({
+            'model': 'RF',
+            'seed': seed,
+            'test_idx': int(idx),
+            'y_true': float(y_test.iloc[pos]),
+            'y_pred': float(y_test_pred_rf[pos]),
+            'residual': float(resid_rf.iloc[pos])})
 
 # MLP Loop (base descriptors)
 for seed in seeds:
@@ -169,19 +179,42 @@ for seed in seeds:
     test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
     # Constant hyperparams
-    n_features = X_train_s.shape[1]
     num_epochs = 100
     loss_func = nn.MSELoss()
 
     # Train model
     model = MLPRegressor(n_features=best['n_features'], hidden_sizes=best['hidden_sizes'], dropout_p=best['dropout_p'])
     optimizer = torch.optim.Adam(model.parameters(), lr=best['learning_rate'], weight_decay=best['weight_decay'])
-    train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
+    train_losses, val_losses = train_model(model, train_loader, val_loader, loss_func, optimizer, num_epochs)
     model.eval()
 
-    # Get test metrics
+    # Get RMSE metrics
     test_rmse_mlp = evaluate_rmse(model, test_loader, loss_func)
     rows.append({'model': 'MLP_base', 'seed': seed, 'test_rmse': test_rmse_mlp})
+
+    # Get resid metrics
+
+    model.eval()
+    all_preds = []
+    all_targets = []
+    with torch.no_grad():
+        for X_batch, y_batch in test_loader:
+            preds = model(X_batch)
+            all_preds.append(preds.numpy())
+            all_targets.append(y_batch.numpy())
+
+    y_test_pred_mlp = np.vstack(all_preds).reshape(-1)
+    y_test_true_mlp = np.vstack(all_targets).reshape(-1)
+    residuals_mlp = y_test_true_mlp - y_test_pred_mlp
+
+    for pos, idx in enumerate(y_test.index):
+        per_iteration_rows.append({
+            'model': 'MLP_base',
+            'seed': seed,
+            'test_idx': int(idx),
+            'y_true': float(y_test_true_mlp[pos]),
+            'y_pred': float(y_test_pred_mlp[pos]),
+            'residual': float(residuals_mlp[pos])})
 
 # MLP Loop (extended descriptors, just a copy from above)
 for seed in seeds:
@@ -217,27 +250,50 @@ for seed in seeds:
     val_loader_ext = DataLoader(val_ds_ext, batch_size=batch_size, shuffle=False)
     test_loader_ext = DataLoader(test_ds_ext, batch_size=batch_size, shuffle=False)
 
-    # Constant hyperparams
-    n_features = X_train_s.shape[1]
-    num_epochs = 100
-    loss_func = nn.MSELoss()
-
     # Train model
     model_ext = MLPRegressor(n_features=best_ext['n_features'], hidden_sizes=best_ext['hidden_sizes'], dropout_p=best_ext['dropout_p'])
     optimizer_ext = torch.optim.Adam(model_ext.parameters(), lr=best_ext['learning_rate'], weight_decay=best_ext['weight_decay'])
-    train_model(model_ext, train_loader_ext, val_loader_ext, loss_func, optimizer_ext, num_epochs)
+    train_losses_ext, val_losses_ext = train_model(model_ext, train_loader_ext, val_loader_ext, loss_func, optimizer_ext, num_epochs)
     model_ext.eval()
 
     # Get test metrics
     test_rmse_mlp_ext = evaluate_rmse(model_ext, test_loader_ext, loss_func)
     rows.append({'model': 'MLP_ext', 'seed': seed, 'test_rmse': test_rmse_mlp_ext})
 
+    # Get resid metrics
+
+    model_ext.eval()
+    all_preds_ext = []
+    all_targets_ext = []
+    with torch.no_grad():
+        for X_batch, y_batch in test_loader_ext:
+            preds_ext = model_ext(X_batch)
+            all_preds_ext.append(preds_ext.numpy())
+            all_targets_ext.append(y_batch.numpy())
+
+    y_test_pred_mlp_ext = np.vstack(all_preds_ext).reshape(-1)
+    y_test_true_mlp_ext = np.vstack(all_targets_ext).reshape(-1)
+    residuals_mlp_ext = y_test_true_mlp_ext - y_test_pred_mlp_ext
+
+    for pos, idx in enumerate(y_test_ext.index):
+        per_iteration_rows.append({
+            'model': 'MLP_ext',
+            'seed': seed,
+            'test_idx': int(idx),
+            'y_true': float(y_test_true_mlp_ext[pos]),
+            'y_pred': float(y_test_pred_mlp_ext[pos]),
+            'residual': float(residuals_mlp_ext[pos])})
+
 # Organize results and summary dataframes
 results_df = pd.DataFrame(rows)
-summary_df = (results_df.groupby("model")["test_rmse"].agg(["mean", "std", "min", "max"]).reset_index())
+summary_df = (results_df.groupby('model')['test_rmse'].agg(['mean', 'std', 'min', 'max']).reset_index())
 print('Test RMSE metrics (mean, std, min, max) by model:')
 print(summary_df)
 
 # Export results and summary dataframes
 results_df.to_csv('wk5/06_seed_testing_results.csv', index=False)
 summary_df.to_csv('wk5/06_seed_testing_summary.csv', index=False)
+
+# Export per_iteration_rows to csv (residual visualization)
+per_iteration_df = pd.DataFrame(per_iteration_rows)
+per_iteration_df.to_csv('06_per_iteration_preds.csv', index=False)

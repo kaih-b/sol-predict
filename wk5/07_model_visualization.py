@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 # Read in per-seed and per-point results
 seed_df = pd.read_csv('wk5/06_seed_testing_results.csv')
 preds_df = pd.read_csv('wk5/06_per_iteration_preds.csv')
+curves_df = 
 
 # Define abs err and create a function to easily output error metrics for each model
 preds_df["abs_err"] = preds_df["residual"].abs()

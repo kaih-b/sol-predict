@@ -114,6 +114,7 @@ def evaluate_rmse(model, data_loader, loss_func):
 # Save each model's test RMSE and predicted values for comparison and residual plots, respectively
 rows = []
 per_iteration_rows = []
+learning_curve_rows = []
 
 # RF Loop
 for seed in seeds:
@@ -216,6 +217,15 @@ for seed in seeds:
             'y_exp': float(y_test_mlp[pos]),
             'y_pred': float(y_test_pred_mlp[pos]),
             'residual': float(residuals_mlp[pos])})
+        
+    # Track per-epoch learning curve
+    for ep, (tr_mse, va_mse) in enumerate(zip(train_losses, val_losses), start=1):
+        learning_curve_rows.append({
+            "model": "MLP_base",
+            "seed": seed,
+            "epoch": ep,
+            "train_mse": float(tr_mse),
+            "val_mse": float(va_mse)})
 
 # MLP Loop (extended descriptors, just a copy from above)
 for seed in seeds:
@@ -285,6 +295,15 @@ for seed in seeds:
             'y_exp': float(y_test_mlp_ext[pos]),
             'y_pred': float(y_test_pred_mlp_ext[pos]),
             'residual': float(residuals_mlp_ext[pos])})
+        
+    # Track per-epoch learning curve
+    for ep, (tr_mse, va_mse) in enumerate(zip(train_losses_ext, val_losses_ext), start=1):
+        learning_curve_rows.append({
+            "model": "MLP_ext",
+            "seed": seed,
+            "epoch": ep,
+            "train_mse": float(tr_mse),
+            "val_mse": float(va_mse)})
 
 # Organize results and summary dataframes
 results_df = pd.DataFrame(rows)
@@ -299,3 +318,7 @@ summary_df.to_csv('wk5/06_seed_testing_summary.csv', index=False)
 # Export per_iteration_rows to csv (for later residual visualization)
 per_iteration_df = pd.DataFrame(per_iteration_rows)
 per_iteration_df.to_csv('wk5/06_per_iteration_preds.csv', index=False)
+
+# Export learning curve history for MLPs
+learning_curve_df = pd.DataFrame(learning_curve_rows)
+learning_curve_df.to_csv("wk5/06_mlp_learning_curve_history.csv", index=False)

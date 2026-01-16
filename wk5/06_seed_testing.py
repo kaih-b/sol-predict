@@ -116,14 +116,17 @@ for seed in seeds:
     # Split train/test/vals for each seed
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size = 0.2, random_state = seed)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size = 0.5, random_state = seed)
-    X_train_full = np.vstack([X_train, X_val])
+    X_train_full = np.concatenate([X_train, X_val])
     y_train_full = np.concatenate([y_train, y_val])
+    X_train_full_df = pd.DataFrame(X_train_full, columns=X_train.columns)
+    y_train_full_s = pd.Series(y_train_full, name=y_train.name)
+
 
     # Create and fit RF model
     with open('wk4/rf_best_params.json', 'r') as f:
         best_params = json.load(f)
     rf_tuned = RandomForestRegressor(random_state = seed, n_jobs = -1, **best_params)
-    rf_tuned.fit(X_train_full, y_train_full)
+    rf_tuned.fit(X_train_full_df, y_train_full_s)
 
     # Get test metrics
     y_test_pred_rf = rf_tuned.predict(X_test)
@@ -180,7 +183,7 @@ for seed in seeds:
     test_rmse_mlp = evaluate_rmse(model, test_loader, loss_func)
     rows.append({'model': 'MLP_base', 'seed': seed, 'test_rmse': test_rmse_mlp})
 
-# MLP Loop (extended descriptors)
+# MLP Loop (extended descriptors, just a copy from above)
 for seed in seeds:
     # Set seeds
     np.random.seed(seed)
@@ -221,15 +224,20 @@ for seed in seeds:
 
     # Train model
     model_ext = MLPRegressor(n_features=best_ext['n_features'], hidden_sizes=best_ext['hidden_sizes'], dropout_p=best_ext['dropout_p'])
-    optimizer_ext = torch.optim.Adam(model.parameters(), lr=best_ext['learning_rate'], weight_decay=best_ext['weight_decay'])
+    optimizer_ext = torch.optim.Adam(model_ext.parameters(), lr=best_ext['learning_rate'], weight_decay=best_ext['weight_decay'])
     train_model(model_ext, train_loader_ext, val_loader_ext, loss_func, optimizer_ext, num_epochs)
-    model.eval()
+    model_ext.eval()
 
     # Get test metrics
     test_rmse_mlp_ext = evaluate_rmse(model_ext, test_loader_ext, loss_func)
     rows.append({'model': 'MLP_ext', 'seed': seed, 'test_rmse': test_rmse_mlp_ext})
 
+# Organize results and summary dataframes
 results_df = pd.DataFrame(rows)
 summary_df = (results_df.groupby("model")["test_rmse"].agg(["mean", "std", "min", "max"]).reset_index())
-print("\nRMSE summary (mean, std, min, max) per model:")
+print('Test RMSE metrics (mean, std, min, max) by model:')
 print(summary_df)
+
+# Export results and summary dataframes
+results_df.to_csv('wk5/06_seed_testing_results.csv', index=False)
+summary_df.to_csv('wk5/06_seed_testing_summary.csv', index=False)

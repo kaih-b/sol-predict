@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # Read in per-seed and per-point results
 seed_df = pd.read_csv('wk5/06_seed_testing_results.csv')
 preds_df = pd.read_csv('wk5/06_per_iteration_preds.csv')
-curves_df = 
+curves_df = pd.read_csv('wk5/06_mlp_learning_curve_history.csv')
 
 # Define abs err and create a function to easily output error metrics for each model
 preds_df["abs_err"] = preds_df["residual"].abs()
@@ -97,3 +97,41 @@ summary_df = pd.DataFrame(summary_rows)
 rmse_stats = (seed_df.groupby("model")["test_rmse"].agg(rmse_mean="mean", rmse_std="std", rmse_min="min", rmse_max="max").reset_index())
 summary_df = summary_df.merge(rmse_stats, on="model", how="left")
 summary_df.to_csv("wk5/07_error_dist_summary.csv", index=False)
+
+# Aggregate per-epoch learning curves by seed
+agg = (curves_df.groupby(["model", "epoch"])
+         .agg(train_mean=("train_mse", "mean"),
+              train_std=("train_mse", "std"),
+              val_mean=("val_mse", "mean"),
+              val_std=("val_mse", "std"))
+         .reset_index())
+
+# Plot for each model
+for model_name in ["MLP_base", "MLP_ext"]:
+    # Select only rows for the current model and order epochs numerically
+    sub = agg[agg["model"] == model_name].sort_values("epoch")
+    ep = sub["epoch"].to_numpy()
+
+    # Plot mean train and validation MSE over all epochs
+    plt.figure()
+    plt.plot(ep, sub["train_mean"].to_numpy(), label="Mean Train MSE")
+    plt.plot(ep, sub["val_mean"].to_numpy(), label="Mean Val MSE")
+
+    # Show variability across epochs to show stability of training dynamics
+    train_mean = sub["train_mean"].to_numpy()
+    train_std = np.nan_to_num(sub["train_std"].to_numpy(), nan=0.0)
+    val_mean = sub["val_mean"].to_numpy()
+    val_std = np.nan_to_num(sub["val_std"].to_numpy(), nan=0.0)
+
+    # Shade regions for mean +/- std
+    plt.fill_between(ep, train_mean - train_std, train_mean + train_std, alpha=0.15)
+    plt.fill_between(ep, val_mean - val_std, val_mean + val_std, alpha=0.15)
+
+    # Label axes
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE")
+    plt.title(f"{model_name}: Learning Curves")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f"exports/{model_name}_learning_curve.png", dpi=300)
+    plt.close()

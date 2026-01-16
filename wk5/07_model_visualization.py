@@ -41,19 +41,19 @@ plt.savefig('exports/rf_mlp_residual_comparison.png', dpi=300)
 plt.close()
 
 # Visualize and save residual vs true logS plot for each model
-def resid_vs_true_plot(y_true, resid, outpath):
+def resid_vs_true_plot(model_name, y_true, resid, outpath):
     plt.figure()
     plt.scatter(y_true, resid, s=10, alpha=0.3)
     plt.axhline(0.0, linewidth=1)
     plt.xlabel('Experimental logS')
     plt.ylabel('Residual')
-    plt.title('Residual vs True logS')
+    plt.title(f'Residual vs Experimental logS ({model_name})')
     plt.tight_layout()
     plt.savefig(outpath, dpi=300)
     plt.close()
-resid_vs_true_plot(y_rf, resid_rf, 'wk5/07_rf_resid_vs_exp.png')
-resid_vs_true_plot(y_mlp, resid_mlp, 'wk5/07_mlp_base_resid_vs_exp')
-resid_vs_true_plot(y_ext, resid_ext, 'wk5/07_mlp_ext_resid_vs_exp')
+resid_vs_true_plot('Random Forest', y_rf, resid_rf, 'wk5/07_rf_resid_vs_exp.png')
+resid_vs_true_plot('MLP (base)', y_mlp, resid_mlp, 'wk5/07_mlp_base_resid_vs_exp')
+resid_vs_true_plot('MLP (expanded)', y_ext, resid_ext, 'wk5/07_mlp_ext_resid_vs_exp')
 
 # Define and save CDF info for each model
 def cdf_xy(abs_err):
@@ -133,7 +133,7 @@ for model_name in ['MLP_base', 'MLP_ext']:
     plt.title(f'{model_name}: Learning Curves')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'exports/{model_name}_learning_curve.png', dpi=300)
+    plt.savefig(f'wk5/07_{model_name}_learning_curve.png', dpi=300)
     plt.close()
 
 # Plot a new model comparison bar chart

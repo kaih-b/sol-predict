@@ -18,7 +18,7 @@ All three residual curves are approximately centered around 0, indicating low ov
 The RF residuals are centered near zero, but the scatter shows noticeable widening at the extremes of experimental logS, indicating reduced accuracy for very insoluble or very soluble compounds. The presence of several large outliers suggests that, while the RF performs adequately on average, it can produce substantial errors on edge cases.
 
 ### Base MLP
-![Base MLP Residual vs Experimental logS](07_mlp_base_resid_vs_exp.png))
+![Base MLP Residual vs Experimental logS](07_mlp_base_resid_vs_exp.png)
 
 Residuals are also centered near 0 across most of the logS range, suggesting no notable bias, but the spread increases toward the extremes, indicating larger errors on edge cases (much like the RF model, but at a lower scale).
 

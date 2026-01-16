@@ -139,7 +139,7 @@ for seed in seeds:
             'model': 'RF',
             'seed': seed,
             'test_idx': int(idx),
-            'y_true': float(y_test.iloc[pos]),
+            'y_exp': float(y_test.iloc[pos]),
             'y_pred': float(y_test_pred_rf[pos]),
             'residual': float(resid_rf.iloc[pos])})
 
@@ -192,8 +192,7 @@ for seed in seeds:
     test_rmse_mlp = evaluate_rmse(model, test_loader, loss_func)
     rows.append({'model': 'MLP_base', 'seed': seed, 'test_rmse': test_rmse_mlp})
 
-    # Get resid metrics
-
+    # Get test-set predictions and experimental targets
     model.eval()
     all_preds = []
     all_targets = []
@@ -203,16 +202,18 @@ for seed in seeds:
             all_preds.append(preds.numpy())
             all_targets.append(y_batch.numpy())
 
+    # Calculate residual metrics
     y_test_pred_mlp = np.vstack(all_preds).reshape(-1)
-    y_test_true_mlp = np.vstack(all_targets).reshape(-1)
-    residuals_mlp = y_test_true_mlp - y_test_pred_mlp
+    y_test_mlp = np.vstack(all_targets).reshape(-1)
+    residuals_mlp = y_test_mlp - y_test_pred_mlp
 
+    # Track residual metrics
     for pos, idx in enumerate(y_test.index):
         per_iteration_rows.append({
             'model': 'MLP_base',
             'seed': seed,
             'test_idx': int(idx),
-            'y_true': float(y_test_true_mlp[pos]),
+            'y_exp': float(y_test_mlp[pos]),
             'y_pred': float(y_test_pred_mlp[pos]),
             'residual': float(residuals_mlp[pos])})
 
@@ -260,8 +261,7 @@ for seed in seeds:
     test_rmse_mlp_ext = evaluate_rmse(model_ext, test_loader_ext, loss_func)
     rows.append({'model': 'MLP_ext', 'seed': seed, 'test_rmse': test_rmse_mlp_ext})
 
-    # Get resid metrics
-
+    # Get test-set predictions and experimental targets
     model_ext.eval()
     all_preds_ext = []
     all_targets_ext = []
@@ -271,16 +271,18 @@ for seed in seeds:
             all_preds_ext.append(preds_ext.numpy())
             all_targets_ext.append(y_batch.numpy())
 
+    # Calculate residual metrics
     y_test_pred_mlp_ext = np.vstack(all_preds_ext).reshape(-1)
-    y_test_true_mlp_ext = np.vstack(all_targets_ext).reshape(-1)
-    residuals_mlp_ext = y_test_true_mlp_ext - y_test_pred_mlp_ext
+    y_test_mlp_ext = np.vstack(all_targets_ext).reshape(-1)
+    residuals_mlp_ext = y_test_mlp_ext - y_test_pred_mlp_ext
 
+    # Track residual metrics
     for pos, idx in enumerate(y_test_ext.index):
         per_iteration_rows.append({
             'model': 'MLP_ext',
             'seed': seed,
             'test_idx': int(idx),
-            'y_true': float(y_test_true_mlp_ext[pos]),
+            'y_exp': float(y_test_mlp_ext[pos]),
             'y_pred': float(y_test_pred_mlp_ext[pos]),
             'residual': float(residuals_mlp_ext[pos])})
 
@@ -294,6 +296,6 @@ print(summary_df)
 results_df.to_csv('wk5/06_seed_testing_results.csv', index=False)
 summary_df.to_csv('wk5/06_seed_testing_summary.csv', index=False)
 
-# Export per_iteration_rows to csv (residual visualization)
+# Export per_iteration_rows to csv (for later residual visualization)
 per_iteration_df = pd.DataFrame(per_iteration_rows)
-per_iteration_df.to_csv('06_per_iteration_preds.csv', index=False)
+per_iteration_df.to_csv('wk5/06_per_iteration_preds.csv', index=False)

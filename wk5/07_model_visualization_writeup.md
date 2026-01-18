@@ -6,9 +6,13 @@
 
 The expanded MLP shows notable performance improvements over the base MLP and tuned RF, evidenced by both a lower mean RMSE and standard deviation. This suggests that the reimplementation of the expanded descriptor-set provided some extra signal that both improved generalization (lower RMSE) and performed more stably across seeds (lower std).
 
+## Absolute Error CDF
+![Absolute Error CDF Plot for Each Model](../exports/rf_mlp_abs_err_cdf.png)
+
+This plot shows the cumulative distribution function (CDF) of absolute residuals (|prediction − experimental|). All three models exhibit very similar error distributions, however, the expanded MLP curve sits slightly above the RF and base MLP, indicating a shift toward smaller absolute errors. The right tail exhibits nearly complete overlap, implying that all models make a small number of large-error predictions and that the expanded MLP’s improvements are primarily in the bulk of predictions; they do not remove failure cases.
+
 ## Residuals
 ![Residuals Distribution Histogram for Each Model](../exports/rf_mlp_residual_comparison.png)
-
 
 All three residual curves are approximately centered around 0, indicating low overall bias across the three models. The degree of overlap is high, but shorter tails and stronger clustering around 0 for the expanded MLP model indicates it as particularly strong, as corroborated by previous findings.
 
@@ -40,4 +44,4 @@ The expanded MLP shows the same overall training dynamics: rapid early improveme
 
 ## Next Steps
 
-- MLP permutation and feature importance -- how do MLP and RF prediction criteria compare and contrast?
+- MLP permutation importance -- how do MLP and RF prediction criteria compare and contrast?

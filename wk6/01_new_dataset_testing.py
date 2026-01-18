@@ -63,3 +63,8 @@ desc_rf = df["mol"].apply(compute_desc_rf)
 df_rf = pd.concat([df.drop(columns=["mol"]), desc_rf], axis=1)
 desc_mlp = df["mol"].apply(compute_desc_mlp)
 df_mlp = pd.concat([df.drop(columns=["mol"]), desc_mlp], axis=1)
+
+# Prep models
+seed = 42
+np.random.seed(seed)
+torch.manual_seed(seed)

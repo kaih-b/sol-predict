@@ -6,11 +6,12 @@ from torch.utils.data import Dataset, DataLoader
 from torch import nn
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import root_mean_squared_error, r2_score
 from sklearn.ensemble import RandomForestRegressor
 from rdkit import Chem
 from rdkit.Chem import Descriptors, Lipinski, rdMolDescriptors
 from rdkit import RDLogger
+import matplotlib.pyplot as plt
 
 # Disable warnings for poorly formatted SMILES (they will be removed)
 RDLogger.DisableLog('rdApp.warning')
@@ -25,20 +26,20 @@ def mol_from_smiles(s):
     if not isinstance(s, str) or not s.strip():
         return None
     return Chem.MolFromSmiles(s)
-df["mol"] = df["SMILES"].apply(lambda s: Chem.MolFromSmiles(s) if isinstance(s, str) else None)
-df = df[df["mol"].notna()].copy()
+df['mol'] = df['SMILES'].apply(lambda s: Chem.MolFromSmiles(s) if isinstance(s, str) else None)
+df = df[df['mol'].notna()].copy()
 
 # Remove inorganic molecules
 def is_organic(mol):
     if mol is None:
         return False
     return any(atom.GetAtomicNum() == 6 for atom in mol.GetAtoms())
-df = df[df["mol"].apply(is_organic)].copy()
+df = df[df['mol'].apply(is_organic)].copy()
 
 # Compute descriptiors for both models
 def aromatic_proportion(mol):
     if mol is None:
-        return float("nan")
+        return float('nan')
     heavy = mol.GetNumHeavyAtoms()
     if heavy == 0:
         return 0.0
@@ -46,32 +47,32 @@ def aromatic_proportion(mol):
     return aro / heavy
 def compute_desc_rf(mol):
     return pd.Series({
-        "HBA": Lipinski.NumHAcceptors(mol),
-        "BertzCT": Descriptors.BertzCT(mol),
-        "TPSA": rdMolDescriptors.CalcTPSA(mol),
-        "RotB": Lipinski.NumRotatableBonds(mol),
-        "LogP": Descriptors.MolLogP(mol),
-        "MolWt": Descriptors.MolWt(mol),
-        "AroProp": aromatic_proportion(mol)})
+        'HBA': Lipinski.NumHAcceptors(mol),
+        'BertzCT': Descriptors.BertzCT(mol),
+        'TPSA': rdMolDescriptors.CalcTPSA(mol),
+        'RotB': Lipinski.NumRotatableBonds(mol),
+        'LogP': Descriptors.MolLogP(mol),
+        'MolWt': Descriptors.MolWt(mol),
+        'AroProp': aromatic_proportion(mol)})
 def compute_desc_mlp(mol):
     return pd.Series({
-        "MolWt": Descriptors.MolWt(mol),
-        "LogP": Descriptors.MolLogP(mol),
-        "TPSA": rdMolDescriptors.CalcTPSA(mol),
-        "RotB": Lipinski.NumRotatableBonds(mol),
-        "AroProp": aromatic_proportion(mol),
-        "HBD": Lipinski.NumHDonors(mol),
-        "HBA": Lipinski.NumHAcceptors(mol),
-        "RingCount": rdMolDescriptors.CalcNumRings(mol),
-        "FractionCSP3": rdMolDescriptors.CalcFractionCSP3(mol),
-        "HeavyAtomCount": mol.GetNumHeavyAtoms(),
-        "BertzCT": Descriptors.BertzCT(mol)})
+        'MolWt': Descriptors.MolWt(mol),
+        'LogP': Descriptors.MolLogP(mol),
+        'TPSA': rdMolDescriptors.CalcTPSA(mol),
+        'RotB': Lipinski.NumRotatableBonds(mol),
+        'AroProp': aromatic_proportion(mol),
+        'HBD': Lipinski.NumHDonors(mol),
+        'HBA': Lipinski.NumHAcceptors(mol),
+        'RingCount': rdMolDescriptors.CalcNumRings(mol),
+        'FractionCSP3': rdMolDescriptors.CalcFractionCSP3(mol),
+        'HeavyAtomCount': mol.GetNumHeavyAtoms(),
+        'BertzCT': Descriptors.BertzCT(mol)})
 
 # Finalize dataframes for each model
-desc_rf = df["mol"].apply(compute_desc_rf)
-df_rf = pd.concat([df.drop(columns=["mol"]), desc_rf], axis=1)
-desc_mlp = df["mol"].apply(compute_desc_mlp)
-df_mlp = pd.concat([df.drop(columns=["mol"]), desc_mlp], axis=1)
+desc_rf = df['mol'].apply(compute_desc_rf)
+df_rf = pd.concat([df.drop(columns=['mol']), desc_rf], axis=1)
+desc_mlp = df['mol'].apply(compute_desc_mlp)
+df_mlp = pd.concat([df.drop(columns=['mol']), desc_mlp], axis=1)
 
 # Prep models
 seed = 42
@@ -201,10 +202,122 @@ train_losses, val_losses = train_model(mlp, train_loader_mlp, val_loader_mlp, lo
 def predict(model, X_t):
     model.eval()
     with torch.no_grad():
-        yhat = model(X_t).numpy().reshape(-1)
-    return yhat
+        y_pred = model(X_t).numpy().reshape(-1)
+    return y_pred
 y_test_pred_mlp = predict(mlp, X_test_mlp_s_t)
 test_rmse_mlp = root_mean_squared_error(y_test_mlp.to_numpy(dtype=float), y_test_pred_mlp)
 
-print(test_rmse_rf)
-print(test_rmse_mlp)
+# See how well the model generalizes on a much larger dataset
+# print(test_rmse_rf) # 1.208
+# print(test_rmse_mlp) # 1.168
+# Both MUCH (~2x) the magnitude of RMSE for the Delaney dataset. Code from here on seeks to explore that discrepancy
+
+# Comparison with Delaney
+df_old = pd.read_csv('wk4/final_descriptors.csv')
+df_old.columns = df_old.columns.str.strip()
+y_old = df_old['logS'].to_numpy(dtype=float)
+y_new = df_mlp['logS'].to_numpy(dtype=float)
+
+# Visualize the datasets compared with each other
+plt.figure()
+plt.hist(y_old, bins=40, alpha=0.5, label='Dataset 1 (Delaney ESOL)')
+plt.hist(y_new, bins=40, alpha=0.5, label='Dataset 2 (AqSolDB)')
+plt.xlabel('logS')
+plt.ylabel('Count')
+plt.title('logS Distribution by Dataset')
+plt.legend()
+plt.tight_layout()
+plt.savefig('wk6/dataset_figures/logs_dist_by_dataset.png', dpi=300)
+plt.close()
+
+# Plot residuals for each descriptor in each dataset to identify if any of them are particularly problematic in the new dataset
+def plot_residuals_vs(x, residuals, descriptor, model_name):
+    plt.figure()
+    plt.scatter(x, residuals, s=12, alpha=0.5)
+    plt.axhline(0.0)
+    plt.xlabel(descriptor)
+    plt.ylabel('Residual')
+    plt.title(f'Residuals vs {descriptor} ({model_name})')
+    plt.tight_layout()
+    plt.savefig(f'wk6/dataset_figures/residuals_vs_{descriptor}_{model_name}.png', dpi=300)
+    plt.close()
+resid_rf = (y_test_rf.to_numpy(dtype=float) - y_test_pred_rf)
+resid_mlp = (y_test_mlp.to_numpy(dtype=float) - y_test_pred_mlp)
+for desc in descriptor_cols_mlp:
+    if desc in X_test_rf.columns:
+        plot_residuals_vs(X_test_rf[desc].to_numpy(dtype=float), resid_rf, desc, 'RF')
+    plot_residuals_vs(X_test_mlp[desc].to_numpy(dtype=float), resid_mlp, desc, 'MLP')
+
+# Metrics: bins to see how performance changes with different descriptors (evaluating ranges outside the ESOL scope)
+def rmse(y_true, y_pred):
+    return root_mean_squared_error(np.asarray(y_true, dtype=float), np.asarray(y_pred, dtype=float))
+def r2(y_true, y_pred):
+    return r2_score(np.asarray(y_true, dtype=float), np.asarray(y_pred, dtype=float))
+
+# Gives RMSE with bins
+def rmse_by_bins(y_true, y_pred, descriptor, bins, labels=None, title=''):
+    # Analysis table; each row is one sample
+    dfb = pd.DataFrame({
+        'y_true': np.asarray(y_true, dtype=float),
+        'y_pred': np.asarray(y_pred, dtype=float),
+        'x': np.asarray(descriptor, dtype=float),
+    }).dropna() # clean NaNs
+
+    # Drop all rows into bins
+    dfb['bin'] = pd.cut(dfb['x'], bins=bins, labels=labels, include_lowest=True)
+    out = []
+    # Compute metrics within each bin
+    for b, g in dfb.groupby('bin', observed=True):
+        if len(g) < 20: # skip small sample-size bins (unstable)
+            continue
+        out.append({
+            'bin': str(b),
+            'n': len(g),
+            'rmse': rmse(g['y_true'], g['y_pred']),
+            'r2': r2(g['y_true'], g['y_pred']),
+            'y_true_mean': float(g['y_true'].mean()),
+            'y_true_std': float(g['y_true'].std())})
+    # Save to df for later use
+    out_df = pd.DataFrame(out).sort_values('bin')
+    print(f'\nRMSE by bins: {title}')
+    print(out_df.to_string(index=False))
+    return out_df
+
+# Heavy Atom Count
+heavy_bins = [0, 20, 40, 60, 80, 200]
+rmse_by_bins(
+    y_test_mlp.to_numpy(dtype=float),
+    y_test_pred_mlp,
+    X_test_mlp['HeavyAtomCount'].to_numpy(dtype=float),
+    bins=heavy_bins,
+    title='MLP vs HeavyAtomCount')
+
+# BertzCT
+bertz_bins = [0, 500, 1000, 1500, 2500, 6000]
+rmse_by_bins(
+    y_test_mlp.to_numpy(dtype=float),
+    y_test_pred_mlp,
+    X_test_mlp['BertzCT'].to_numpy(dtype=float),
+    bins=bertz_bins,
+    title='MLP vs BertzCT')
+rmse_by_bins(
+    y_test_rf.to_numpy(dtype=float),
+    y_test_pred_rf, 
+    X_test_rf['BertzCT'].to_numpy(dtype=float),
+    bins=bertz_bins,
+    title='RF vs BertzCT')
+
+# By logS (hard cases)
+logS_bins = [-20, -10, -8, -6, -4, -2, 0, 5]
+rmse_by_bins(
+    y_test_mlp.to_numpy(dtype=float),
+    y_test_pred_mlp,
+    y_test_mlp.to_numpy(dtype=float),
+    bins=logS_bins,
+    title='MLP by logS bin')
+rmse_by_bins(
+    y_test_rf.to_numpy(dtype=float),
+    y_test_pred_rf,
+    y_test_rf.to_numpy(dtype=float),
+    bins=logS_bins,
+    title='RF by logS bin')

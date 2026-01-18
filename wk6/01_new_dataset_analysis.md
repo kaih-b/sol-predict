@@ -2,6 +2,8 @@
 
 The AqSolDB test set differs substantially from Delaney ESOL, and the effects are clear in the residual diagnostics and bin-stratified metrics.
 
+![AqSolDB vs. Delaney ESOL](dataset_figures/logs_dist_by_dataset.png)
+
 `test_rmse_mlp = 1.168`
 
 `test_rmse_rf = 1.208`

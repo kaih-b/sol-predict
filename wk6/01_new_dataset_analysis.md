@@ -102,6 +102,6 @@ In practice, this corresponds to typical small molecules (often similar to drug-
 
 ## Next Steps
 - Assess Delaney ESOL performance on AqSolDB training; vice-versa
-    - Output: 2x2 matrix with training set, test set, and RMSE
-- (Optional, if results are compelling) inspect permutation importance for each combination
+    - Output: matrix with training set, test set, and RMSE
+    - Assess across seeds for direct comparison
 - Finalize visualizations and writeups

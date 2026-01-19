@@ -9,73 +9,39 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import root_mean_squared_error
 
-seed = 42
-np.random.seed(seed)
-torch.manual_seed(seed)
+# Establish test seeds
+seeds = list(range(25))
 
+# Read in descriptors from each dataset and for each model
 df_rf_esol  = pd.read_csv('wk4/final_descriptors.csv')
 df_mlp_esol = pd.read_csv('wk4/expanded_descriptors.csv')
 df_rf_aq    = pd.read_csv('wk6/01_aqsoldb_rf_descriptors.csv')
 df_mlp_aq   = pd.read_csv('wk6/01_aqsoldb_mlp_descriptors.csv')
 
+# Split up columns
 target_col = 'logS'
 descriptor_cols_rf  = [c for c in df_rf_esol.columns  if c not in [target_col, 'SMILES']]
 descriptor_cols_mlp = [c for c in df_mlp_esol.columns if c not in [target_col, 'SMILES']]
 
+# Split up input and target for each dataset
 X_rf_esol  = df_rf_esol[descriptor_cols_rf]
 y_rf_esol  = df_rf_esol[target_col]
 X_mlp_esol = df_mlp_esol[descriptor_cols_mlp]
 y_mlp_esol = df_mlp_esol[target_col]
-
 X_rf_aq  = df_rf_aq[descriptor_cols_rf]
 X_mlp_aq = df_mlp_aq[descriptor_cols_mlp]
 y_rf_aq  = df_rf_aq[target_col]
 y_mlp_aq = df_mlp_aq[target_col]
 
+# Helper function to replicate splits across tests
 def split_80_10_10(X, y, seed=42):
-    # 80% train, 20% temp
+    torch.manual_seed(seed)
+    np.random.seed(seed)
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.2, random_state=seed)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=seed)
     return X_train, y_train, X_val, y_val, X_test, y_test
 
-# ESOL -> AqSolDB (preserve 80/10/10 on ESOL; external test = full AqSolDB)
-# RF (ESOL internal 80/10/10; keep internal test too, in case you want it)
-X_rf_train, y_rf_train, X_rf_val, y_rf_val, X_rf_test_in, y_rf_test_in = split_80_10_10(X_rf_esol, y_rf_esol, seed=seed)
-
-# For RF, train on train+val
-X_rf_train_full = pd.concat([X_rf_train, X_rf_val], axis=0)
-y_rf_train_full = pd.concat([y_rf_train, y_rf_val], axis=0)
-
-# External (cross-dataset) test
-X_rf_test = X_rf_aq
-y_rf_test = y_rf_aq
-
-# MLP (ESOL internal 80/10/10; keep val separate for training)
-X_mlp_train, y_mlp_train, X_mlp_val, y_mlp_val, X_mlp_test_in, y_mlp_test_in = split_80_10_10(X_mlp_esol, y_mlp_esol, seed=seed)
-
-# External (cross-dataset) test
-X_mlp_test = X_mlp_aq
-y_mlp_test = y_mlp_aq
-
-# AqSolDB -> ESOL (preserve 80/10/10 on AqSolDB; external test = full ESOL)
-# RF (AqSolDB internal 80/10/10; keep internal test too)
-X_rf_train_rev, y_rf_train_rev, X_rf_val_rev, y_rf_val_rev, X_rf_test_in_rev, y_rf_test_in_rev = split_80_10_10(X_rf_aq, y_rf_aq, seed=seed)
-
-# For RF, train on train+val
-X_rf_train_full_rev = pd.concat([X_rf_train_rev, X_rf_val_rev], axis=0)
-y_rf_train_full_rev = pd.concat([y_rf_train_rev, y_rf_val_rev], axis=0)
-
-# External (cross-dataset) test
-X_rf_test_rev = X_rf_esol
-y_rf_test_rev = y_rf_esol
-
-# MLP (AqSolDB internal 80/10/10; keep val separate)
-X_mlp_train_rev, y_mlp_train_rev, X_mlp_val_rev, y_mlp_val_rev, X_mlp_test_in_rev, y_mlp_test_in_rev = split_80_10_10(X_mlp_aq, y_mlp_aq, seed=seed)
-
-# External (cross-dataset) test
-X_mlp_test_rev = X_mlp_esol
-y_mlp_test_rev = y_mlp_esol
-
+# MLP helpers (carryover)
 class SolubilityDataset(Dataset):
     def __init__(self, X_tensor, y_tensor):
         self.X = X_tensor
@@ -145,8 +111,8 @@ def train_model(model, train_loader, val_loader, loss_func, optimizer, num_epoch
         model.load_state_dict(best_state)
     return train_losses, val_losses
 
-# RF model cross-evaluation
-def train_rf_cross(X_train, y_train, X_test, y_test):
+# RF model evaluation
+def RF_eval(X_train, y_train, X_test, y_test, seed=42):
     with open('wk4/rf_best_params.json', 'r') as f:
         best_params = json.load(f)
     rf = RandomForestRegressor(random_state=seed, n_jobs=-1, **best_params)
@@ -155,8 +121,8 @@ def train_rf_cross(X_train, y_train, X_test, y_test):
     test_rmse = root_mean_squared_error(y_test, y_test_pred)
     return test_rmse, y_test_pred
 
-# MLP model cross-evaluation
-def train_mlp_cross(X_train_df, y_train_ser, X_test_df, y_test_ser):
+# MLP model evaluation
+def MLP_eval(X_train_df, y_train_ser, X_test_df, y_test_ser, seed=42):
     batch_size = 64
     num_epochs = 100
     loss_func = nn.MSELoss()
@@ -172,16 +138,16 @@ def train_mlp_cross(X_train_df, y_train_ser, X_test_df, y_test_ser):
     scaler = StandardScaler()
     scaler.fit(X_tr)
 
-    X_tr  = torch.from_numpy(scaler.transform(X_tr).astype(np.float32))
+    X_tr = torch.from_numpy(scaler.transform(X_tr).astype(np.float32))
     X_val = torch.from_numpy(scaler.transform(X_val).astype(np.float32))
-    X_te  = torch.from_numpy(scaler.transform(X_test_df).astype(np.float32))
+    X_te = torch.from_numpy(scaler.transform(X_test_df).astype(np.float32))
 
-    y_tr  = torch.from_numpy(y_tr.values.astype(np.float32).reshape(-1, 1))
+    y_tr = torch.from_numpy(y_tr.values.astype(np.float32).reshape(-1, 1))
     y_val = torch.from_numpy(y_val.values.astype(np.float32).reshape(-1, 1))
-    y_te  = torch.from_numpy(y_test_ser.values.astype(np.float32).reshape(-1, 1))
+    y_te = torch.from_numpy(y_test_ser.values.astype(np.float32).reshape(-1, 1))
 
     train_loader = DataLoader(SolubilityDataset(X_tr, y_tr), batch_size=batch_size, shuffle=True)
-    val_loader   = DataLoader(SolubilityDataset(X_val, y_val), batch_size=batch_size, shuffle=False)
+    val_loader = DataLoader(SolubilityDataset(X_val, y_val), batch_size=batch_size, shuffle=False)
 
     model = MLPRegressor(
         n_features=best_params['n_features'],
@@ -201,75 +167,102 @@ def train_mlp_cross(X_train_df, y_train_ser, X_test_df, y_test_ser):
     test_rmse = root_mean_squared_error(y_te.numpy().reshape(-1), y_test_pred)
     return y_test_pred, test_rmse, train_losses, val_losses
 
-# RANDOM FOREST
-# 1) ESOL -> ESOL (internal test split)
-rmse_rf_e2e, pred_rf_e2e = train_rf_cross(
-    X_train=X_rf_train_full,    # ESOL train+val (matches your original behavior)
-    y_train=y_rf_train_full,
-    X_test=X_rf_test_in,        # ESOL internal 10% test
-    y_test=y_rf_test_in
-)
-print("RF ESOL -> ESOL (internal) RMSE:", rmse_rf_e2e)
+# Test on (same) 25 random seed for apples-to-apples mean and std RMSE comparison between datasets
+rows = []
+for seed in seeds:
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    
+    # RF train and test set from ESOL data
+    X_rf_train, y_rf_train, X_rf_val, y_rf_val, X_rf_test_esol, y_rf_test_esol = split_80_10_10(X_rf_esol, y_rf_esol, seed=seed)
+    X_rf_train_esol = pd.concat([X_rf_train, X_rf_val], axis=0)
+    y_rf_train_esol = pd.concat([y_rf_train, y_rf_val], axis=0)
 
-# 2) ESOL -> AqSolDB (cross)
-rmse_rf_e2a, pred_rf_e2a = train_rf_cross(
-    X_train=X_rf_train_full,
-    y_train=y_rf_train_full,
-    X_test=X_rf_test,           # full AqSolDB
-    y_test=y_rf_test
-)
-print("RF ESOL -> AqSolDB (cross) RMSE:", rmse_rf_e2a)
+    # RF train and test set from AqSolDB data
+    X_rf_train_rev, y_rf_train_rev, X_rf_val_rev, y_rf_val_rev, X_rf_test_aq, y_rf_test_aq = split_80_10_10(X_rf_aq, y_rf_aq, seed=seed)
+    X_rf_train_aq = pd.concat([X_rf_train_rev, X_rf_val_rev], axis=0)
+    y_rf_train_aq = pd.concat([y_rf_train_rev, y_rf_val_rev], axis=0)
 
-# 3) AqSolDB -> AqSolDB (internal test split)
-rmse_rf_a2a, pred_rf_a2a = train_rf_cross(
-    X_train=X_rf_train_full_rev,   # AqSol train+val
-    y_train=y_rf_train_full_rev,
-    X_test=X_rf_test_in_rev,       # AqSol internal 10% test
-    y_test=y_rf_test_in_rev
-)
-print("RF AqSolDB -> AqSolDB (internal) RMSE:", rmse_rf_a2a)
+    # MLP train and test set from ESOL data
+    X_mlp_train_esol, y_mlp_train_esol, _, _, X_mlp_test_esol, y_mlp_test_esol = split_80_10_10(X_mlp_esol, y_mlp_esol, seed=seed)
 
-# 4) AqSolDB -> ESOL (cross)
-rmse_rf_a2e, pred_rf_a2e = train_rf_cross(
-    X_train=X_rf_train_full_rev,
-    y_train=y_rf_train_full_rev,
-    X_test=X_rf_test_rev,          # full ESOL
-    y_test=y_rf_test_rev
-)
-print("RF AqSolDB -> ESOL (cross) RMSE:", rmse_rf_a2e)
+    # MLP train and test set from AqSolDB data
+    X_mlp_train_aq, y_mlp_train_aq, _, _, X_mlp_test_aq, y_mlp_test_aq = split_80_10_10(X_mlp_aq, y_mlp_aq, seed=seed)
 
-# MLP
-pred_mlp_e2e, rmse_mlp_e2e, tr_loss_e2e, val_loss_e2e = train_mlp_cross(
-    X_train_df=X_mlp_esol,
-    y_train_ser=y_mlp_esol,
-    X_test_df=X_mlp_test_in,
-    y_test_ser=y_mlp_test_in
-)
-print("MLP ESOL -> ESOL (internal) RMSE:", rmse_mlp_e2e)
+    # RFs
+    # ESOL train -> ESOL test
+    rmse_rf_e2e, pred_rf_e2e = RF_eval(
+        X_train=X_rf_train_esol,
+        y_train=y_rf_train_esol,
+        X_test=X_rf_test_esol,
+        y_test=y_rf_test_esol,
+        seed=seed)
+    # 2) ESOL train -> AqSolDB test
+    rmse_rf_e2a, pred_rf_e2a = RF_eval(
+        X_train=X_rf_train_esol,
+        y_train=y_rf_train_esol,
+        X_test=X_rf_test_aq,
+        y_test=y_rf_test_aq,
+        seed=seed)
+    # 3) AqSolDB train -> AqSolDB test
+    rmse_rf_a2a, pred_rf_a2a = RF_eval(
+        X_train=X_rf_train_aq,
+        y_train=y_rf_train_aq,
+        X_test=X_rf_test_aq,
+        y_test=y_rf_test_aq,
+        seed=seed)
+    # 4) AqSolDB train -> ESOL test
+    rmse_rf_a2e, pred_rf_a2e = RF_eval(
+        X_train=X_rf_train_aq,
+        y_train=y_rf_train_aq,
+        X_test=X_rf_test_esol,
+        y_test=y_rf_test_esol,
+        seed=seed)
+    # MLPs
+    # ESOL train -> ESOL test
+    pred_mlp_e2e, rmse_mlp_e2e, tr_loss_e2e, val_loss_e2e = MLP_eval(
+        X_train_df=X_mlp_train_esol,
+        y_train_ser=y_mlp_train_esol,
+        X_test_df=X_mlp_test_esol,
+        y_test_ser=y_mlp_test_esol,
+        seed=seed)
+    # 2) ESOL train -> AqSolDB test
+    pred_mlp_e2a, rmse_mlp_e2a, tr_loss_e2a, val_loss_e2a = MLP_eval(
+        X_train_df=X_mlp_train_esol,
+        y_train_ser=y_mlp_train_esol,
+        X_test_df=X_mlp_test_aq,
+        y_test_ser=y_mlp_test_aq,
+        seed=seed)
+    # 3) AqSolDB train -> AqSolDB test
+    pred_mlp_a2a, rmse_mlp_a2a, tr_loss_a2a, val_loss_a2a = MLP_eval(
+        X_train_df=X_mlp_train_aq,
+        y_train_ser=y_mlp_train_aq,
+        X_test_df=X_mlp_test_aq,
+        y_test_ser=y_mlp_test_aq,
+        seed=seed)
+    # 4) AqSolDB train -> ESOL test
+    pred_mlp_a2e, rmse_mlp_a2e, tr_loss_a2e, val_loss_a2e = MLP_eval(
+        X_train_df=X_mlp_train_aq,
+        y_train_ser=y_mlp_train_aq,
+        X_test_df=X_mlp_test_esol,
+        y_test_ser=y_mlp_test_esol,
+        seed=seed)
+    
+    # Append each result to a table for aggregation, df conversion, and export
+    rows.extend([
+        {'model': 'RF', 'train': 'ESOL', 'test': 'ESOL', 'seed': seed, 'rmse': float(rmse_rf_e2e)},
+        {'model': 'RF', 'train': 'ESOL', 'test': 'AqSolDB', 'seed': seed, 'rmse': float(rmse_rf_e2a)},
+        {'model': 'RF', 'train': 'AqSolDB', 'test': 'AqSolDB', 'seed': seed, 'rmse': float(rmse_rf_a2a)},
+        {'model': 'RF', 'train': 'AqSolDB', 'test': 'ESOL', 'seed': seed, 'rmse': float(rmse_rf_a2e)},
+        {'model': 'MLP', 'train': 'ESOL', 'test': 'ESOL', 'seed': seed, 'rmse': float(rmse_mlp_e2e)},
+        {'model': 'MLP', 'train': 'ESOL', 'test': 'AqSolDB', 'seed': seed, 'rmse': float(rmse_mlp_e2a)},
+        {'model': 'MLP', 'train': 'AqSolDB','test': 'AqSolDB', 'seed': seed, 'rmse': float(rmse_mlp_a2a)},
+        {'model': 'MLP', 'train': 'AqSolDB','test': 'ESOL', 'seed': seed, 'rmse': float(rmse_mlp_a2e)},])
 
-# 2) ESOL -> AqSolDB (cross)
-pred_mlp_e2a, rmse_mlp_e2a, tr_loss_e2a, val_loss_e2a = train_mlp_cross(
-    X_train_df=X_mlp_esol,
-    y_train_ser=y_mlp_esol,
-    X_test_df=X_mlp_aq,
-    y_test_ser=y_mlp_aq
-)
-print("MLP ESOL -> AqSolDB (cross) RMSE:", rmse_mlp_e2a)
+# Organize and aggregate results into df
+results = pd.DataFrame(rows)
+summary = (results.groupby(['model', 'train', 'test'], as_index=False).agg(mean_rmse=('rmse', 'mean'), std_rmse=('rmse', 'std'), n=('rmse', 'count')))
 
-# 3) AqSolDB -> AqSolDB (internal test split)
-pred_mlp_a2a, rmse_mlp_a2a, tr_loss_a2a, val_loss_a2a = train_mlp_cross(
-    X_train_df=X_mlp_aq,
-    y_train_ser=y_mlp_aq,
-    X_test_df=X_mlp_test_in_rev,
-    y_test_ser=y_mlp_test_in_rev
-)
-print("MLP AqSolDB -> AqSolDB (internal) RMSE:", rmse_mlp_a2a)
-
-# 4) AqSolDB -> ESOL (cross)
-pred_mlp_a2e, rmse_mlp_a2e, tr_loss_a2e, val_loss_a2e = train_mlp_cross(
-    X_train_df=X_mlp_aq,
-    y_train_ser=y_mlp_aq,
-    X_test_df=X_mlp_esol,
-    y_test_ser=y_mlp_esol
-)
-print("MLP AqSolDB -> ESOL (cross) RMSE:", rmse_mlp_a2e)
+# Save summary and individual seed results to csv
+results.to_csv("wk6/02_db_test_per_seed.csv", index=False)
+summary.to_csv("wk6/02_db_test_summary.csv", index=False)

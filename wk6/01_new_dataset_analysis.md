@@ -99,3 +99,9 @@ Recommended operating domain: lower size/complexity regime, where both error and
 - BertzCT ≤ 1000: MLP RMSE ≈ 1.05–1.17, R² ≈ 0.71–0.72 (n=879 combined)
 
 In practice, this corresponds to typical small molecules (often similar to drug-like scale), and avoids the high-leverage regions where performance degrades (HeavyAtomCount > 40 for MLP; very high BertzCT; very low logS). Practically, this means the model is well-suited for screening of ESOL-like small molecules, a common application for chemical engineering workflows or applications in pharmaceutical R&D.
+
+## Next Steps
+- Assess Delaney ESOL performance on AqSolDB training; vice-versa
+    - Output: 2x2 matrix with training set, test set, and RMSE
+- (Optional, if results are compelling) inspect permutation importance for each combination
+- Finalize visualizations and writeups

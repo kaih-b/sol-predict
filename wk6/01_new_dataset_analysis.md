@@ -1,6 +1,14 @@
-# External Validation on AqSolDB
+# Re-Train on AqSolDB
 
-The AqSolDB test set differs substantially from Delaney ESOL, and the effects are clear in the residual diagnostics and bin-stratified metrics.
+[**AqSolDB Kaggle Download**](https://www.kaggle.com/datasets/sorkun/aqsoldb-a-curated-aqueous-solubility-dataset?resource=download)
+
+The AqSolDB dataset differs substantially from the Delaney ESOL baseline. The cleaned dataset (removed unparseable SMILES, recomputed molecular descriptors) contains 9655 organic molecules with logS values spanning `-13.17` to `2.14`. These differences are reflected in the test set's metrics, including RMSE, residual distribution, and R². 
+
+## Method
+
+Recreated the same split and RF/MLP models as in previous steps, completely using the AqSolDB dataset. logS was identified as the target variable, and descriptors were calculated for each molecule and model correspondingly. The models were trained separately, with both using a 80/10/10 train/validation/test split. The MLP includes a standard sklearn.preprocessing module scaler fitted on the train split from AqSolDB, and uses an Adam optimizer with an MSE loss function. Both models use **ESOL-tuned** hyperparameters as previously determined and documented.
+
+## Summary
 
 ![AqSolDB vs. Delaney ESOL](dataset_figures/logs_dist_by_dataset.png)
 
@@ -8,25 +16,21 @@ The AqSolDB test set differs substantially from Delaney ESOL, and the effects ar
 
 `test_rmse_rf = 1.208`
 
-Though this generalization beyond the ESOL molecules (1.71x RMSE for RF, 1.80x RMSE for MLP, as extracted from RMSEs across 25 seeds shown in `wk4/06_seed_testing_summary.csv`) is relatively poor, further analysis indicates why these differences are present and where the model **is** able to generalize. 
+For context, compared to ESOL mean RMSE across 25 seeds (RF = 0.705, MLP = 0.648), the single-seed AqSolDB test RMSE is 1.71x and 1.80x higher, respectively. A rigorous comparison would require repeating AqSolDB evaluation across seeds. Although this simplified version only tests one random seed, it works as a basic diagnostic for where the models succeed and fail with new data.
 
-**NOTE:** To more directly compared RMSE performace across datasets, the AqSolDB models should be surveyed across seeds, but this simplified version works as a basic diagnostic for where the models succeed and fail with completely new data.
+External performance declines primarily due to domain shift in molecules tested: AqSolDB contains many large and complex molecules with a more extreme solubility distribution, whereas ESOL primarily contains smaller, drug-like molecules that are primarily soluble to moderately insoluble. This domain shift had substantial effects on the models' abilities to generalize.
 
-## Summary
+- Bin-stratified metrics indicate size & complexity dependent error growth (e.g. MLP RMSE rises from 0.98 at ≤20 heavy atoms to 2.08 at 40–60)
+- Both RF and MLP struggle in the very low-solubility tail (e.g. RMSE = 2.36 for logS in (-10, -8]), implying that chemistry with these extreme cases is just more difficult to predict
+- Residual vs descriptor analysis corroborates that the greatest failures are in extrapolating beyond the domain of the Delaney ESOL
+- For the model to generalize better across AqSolDB's domain, additional, richer (fingerprints e.g. Morgan) descriptors, and a wider range of training-set molecules would likely be advantageous 
 
-External performance degrades primarily due to domain shift: AqSolDB contains large and complex molecules with an extreme solubility distribution, whereas ESOL primarily contains smaller, drug-like molecules. This shift had substantial effects on the models' abilities to generalize.
-
-- Bin-stratified metrics confirm size & complexity dependent error growth (e.g. MLP RMSE rises from ~1.0 at ≤20 heavy atoms to ~2.1 at 40–60)
-- Both RF and MLP struggle in the very low-solubility tail (RMSE ~ 2.36 for logS in (-10, -8]), implying that chemistry with these extreme cases is just more difficult to predict
-- Residual diagnostics across descriptors indicate the main failure mode is extrapolation in new regions, not a single-feature bias
-- For the model to generalize better across AqSolDB's domain, additional features and a much broader training set would likely be advantageous
-
-## Error Increases Systematically with Molecular Size & Complexity
+## Error Increases with Molecular Size & Complexity
 
 Stratifying by HeavyAtomCount and BertzCT shows a clear decline in MLP performance:
 
 ### MLP vs HeavyAtomCount
-- ≤20 heavy atoms: RMSE 0.98, R² 0.80 (n=706)
+- ≤20: RMSE 0.98, R² 0.80 (n=706)
 - 20–40: RMSE 1.48, R² 0.52 (n=216)
 - 40–60: RMSE 2.08, R² 0.44 (n=33)
 
@@ -35,18 +39,23 @@ Stratifying by HeavyAtomCount and BertzCT shows a clear decline in MLP performan
 - 500–1000: RMSE 1.17, R² 0.72 (n=267)
 - 1000–1500: RMSE 1.94, R² 0.33 (n=53)
 
-RF follows a similar pattern (does not use HeavyAtomCount as a descriptor, MolWt is highly correlated and show similar issues in the residual diagnostic below) and degrades even more in the 1000–1500 complexity band (RMSE 2.11, R² 0.21). The takeaway is not the exact bins but the trend: as molecules become larger and more complex, both models lose predictive stability. This is consistent with the claim that the model fails to generalize beyond the ESOL domain.
+### RF vs BertzCT
+- 0-500: RMSE 1.07, R² 0.70 (n=612)
+- 500-1000: RMSE 1.20, R² 0.71 (n=267)
+- 1000-1500: RMSE 2.11, R² 0.21 (n=53)
+
+The takeaway is not the exact bins, but the trend: as molecules become larger and more complex, both models lose predictive stability. This is consistent with the claim that the model fails to generalize beyond the ESOL domain. Large-molecule and high complexity bins are sparser, with low n-values making estimates more difficult and noisier in those regions.
 
 ## Breakdown in Low-Solubility Distribution Tail
 
-Binning by logS value shows very large errors in the low-solubility tail for both models:
+Binning by true logS value shows very large errors in the low-solubility tail for both models:
 
-- (-8, -6]: RMSE ~ 1.68 (MLP/RF)
-- (-10, -8]: RMSE ~ 2.36 (MLP/RF), n=28
+- (-8, -6]: RMSE ≈ 1.68 (MLP/RF), n=87
+- (-10, -8]: RMSE ≈ 2.36 (MLP/RF), n=28
 
-Within these logS bins, the actual logS variance is small (std ~ 0.42–0.56), so RMSE values even above 1 imply the models are missing signals, and these errors are very costly.
+These solubilities are sparsely represented in the ESOL training distribution (see above histogram), and errors expand greatly in this tail.
 
-AqSolDB contains a broader and more extreme solubility range than ESOL, and the very low logS tail likely reflects a combination of (i) out-of-distribution chemistry relative to the ESOL training domain and (ii) greater variance common in compiled experimental databases (e.g. differing experimental conditions or measurement protocols), both of which can increase error in the extreme tail.
+The very low logS tail likely reflects a combination of (i) different chemistry relative to the ESOL training domain and (ii) greater variance in compiled experimental databases (e.g. differing experimental conditions or measurement protocols), both of which can increase error in the extreme tail.
 
 ## Residual Plot Diagnostics
 
@@ -62,14 +71,14 @@ Specific signals from representative plots:
 ![MolWt MLP Residual Plot for AqSolDB Dataset](dataset_figures/residuals_vs_MolWt_MLP.png)
 ![MolWt RF Residual Plot for AqSolDB Dataset](dataset_figures/residuals_vs_MolWt_RF.png)
 
-MAqSolDB includes rare very high-molecular-weight compounds (approaching ~2000), and these high-leverage points are associated with larger residual magnitudes.
+AqSolDB includes rare very high-molecular-weight compounds (approaching 2000 Da), and these high-leverage points are associated with much larger residual magnitudes.
 
 ### TPSA
 
 ![TPSA MLP Residual Plot for AqSolDB Dataset](dataset_figures/residuals_vs_TPSA_MLP.png)
 ![TPSA RF Residual Plot for AqSolDB Dataset](dataset_figures/residuals_vs_TPSA_RF.png)
 
-Also heavy-tailed (rare points with very high TPSA). Errors appear more variable where data are sparse, suggesting limited training coverage in highly polar molecules.
+Also heavy-tailed; rare points with very high TPSA and correspondingly high residuals. Errors appear more variable where data points are sparse, suggesting limited training coverage in highly polar molecules.
 
 ### logP
 
@@ -78,15 +87,15 @@ Also heavy-tailed (rare points with very high TPSA). Errors appear more variable
 
 Residuals remain roughly centered in the mid-range, but tails include scattered large errors, again pointing to extrapolation error over descriptor bias.
 
-Overall, these plots do not suggest a single descriptor is “wrong.” Instead, they indicate that the dominant failure mode is extrapolation in sparsely populated regions of feature space (e.g., very large/complex molecules and extreme tail values), where the ESOL-trained models have limited training coverage and residual variance increases. 
+Overall, these plots do not suggest a single descriptor is wrong. Instead, they indicate that most failures are a result of poor extrapolation in sparsely populated regions (namely, very large or complex molecules and extreme tail logS values) where the ESOL-based models have limited training coverage and residual variance increases greatly. 
 
 ## Where is the Model Most Useful?
 
-Given the AqSolDB results, the RF/MLP models are most reliable when applied to molecules similar to the Delaney ESOL domain. This includes small-to-moderate sized, organic, “drug-like” compounds where the descriptor ranges overlap the training distribution.
+Given the AqSolDB results, the RF/MLP models are most reliable when applied to molecules similar to the Delaney ESOL domain. This includes small-to-moderate sized, organic molecules where the descriptor ranges overlap the training distribution.
 
 Recommended operating domain: lower size/complexity regime, where both error and fit quality are substantially better.
 
 - HeavyAtomCount ≤ 20: MLP RMSE ≈ 0.98, R² ≈ 0.80 (n=706)
 - BertzCT ≤ 1000: MLP RMSE ≈ 1.05–1.17, R² ≈ 0.71–0.72 (n=879 combined)
 
-In practice, this corresponds to typical small molecules (often similar to drug-like scale), and avoids the high-leverage regions where performance degrades (HeavyAtomCount > 40 for MLP; very high BertzCT; very low logS tail). Practically, this means the model is well-suited for in-domain screening and prioritization of ESOL-like small molecules, a common application for chemical engineering workflows or applications in pharmaceutical R&D.
+In practice, this corresponds to typical small molecules (often similar to drug-like scale), and avoids the high-leverage regions where performance degrades (HeavyAtomCount > 40 for MLP; very high BertzCT; very low logS). Practically, this means the model is well-suited for screening of ESOL-like small molecules, a common application for chemical engineering workflows or applications in pharmaceutical R&D.

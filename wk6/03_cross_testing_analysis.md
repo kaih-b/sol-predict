@@ -1,0 +1,11 @@
+# Cross-Dataset Testing
+
+![Cross-Dataset Testing Results Visualization](../exports/dataset_performance_comparison.png)
+
+Across 25 seeds, the cross-testing supports that a wider training set substantially improves performance for each of the tuned models. For the MLP, train AqSolDB → test ESOL (0.661 ± 0.055 RMSE) is effectively identical to ESOL in-domain (0.662 ± 0.057). In contrast, the reverse transfer is where generalization breaks down: train ESOL → test AqSolDB is highly ineffective (1.773 ± 0.263), and is also much less stable across seeds. This is consistent with a ESOL training set covering a narrower slice of chemistry than AqSolDB, making generalization to a wider test set much more difficult.
+
+Training on AqSolDB appears to teach a representation that still works on the more constrained ESOL distribution, while ESOL-only training lacks coverage to extrapolate to the broader AqSolDB dataset. Practically, this implies AqSolDB is the safer default training source to maintain performance across datasets, whereas ESOL-only training should be treated as a model specialized to ESOL-like (small-molecule, relatively simple) chemistry rather than a general solubility predictor. 
+
+Finally, the seed spread supports the same conclusion: when the test set is ESOL, the MLP’s std stays low (~0.055–0.057), but under the hardest shift (ESOL → AqSolDB) both mean error and variability increase substantially. This does not necessarily imply the AqSolDB-trained model is more chemically reliable, but it does indicate that it is better at holding performance steady when the data-generating process changes. 
+
+Between the RF and MLP, the RF appears to achieve a materially better result in cross-dataset prediction, where the MLP struggles most. For in-domain testing, the MLP modestly outperforms the RF, as previously found, but the magnitude of its improvement is much smaller than the MLP's struggles with cross-dataset prediction. Again, this may indicate that the RF's predictions are more consistent with chemical interpretation, but more analysis would be needed to confirm that hypothesis.

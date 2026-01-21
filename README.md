@@ -46,8 +46,8 @@ The project serves as an introduction to data-driven chemical engineering workfl
 - Develop ML models that predict solubility from structural features  
 - Compare the performance of multiple models 
 - Familiarize self with accepeted research procedures
-    - This project falls strictly under exploratory, and is not of research-grade quality
-    - Future projects will implement these findings with full reproducibility
+    - This project is exploratory, and is not of research-grade quality
+    - Future projects will implement full reproducibility and less repetition (model initialization)
 - Familiarize self with long-term, self-guided projects
-- Troubleshoot both coding and process roadblocks
-- Prepare self for future projects involving applications of ML and data science to chemical problems
+- Troubleshoot coding and process roadblocks
+- Prepare self for future projects involving interdisciplinary applications of ML and data science

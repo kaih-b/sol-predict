@@ -1,6 +1,6 @@
 # SolPredict
 
-Predicting aqueous solubility (logS) from molecular descriptors using machine learning.
+Predicting aqueous solubility (logS) of organic compounds from molecular descriptors using machine learning.
 
 ## Summary
 

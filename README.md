@@ -10,7 +10,7 @@ The project serves as an introduction to data-driven chemical engineering workfl
 
 ## Results Overview
 
-| Model | Features | RMSE | RMSE STD |
+| Model | Features | Mean RMSE | RMSE STD |
 |-------|----------|------|------|
 | Linear Regression | base | 0.993 | NA |
 | Decision Tree | base | 0.914 | NA |

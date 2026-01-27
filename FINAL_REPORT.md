@@ -2,7 +2,11 @@
 
 ## 1. Background & Summary
 
-Aqueous solubility plays a central role in drug discovery, affecting absorption, distribution, and formulation decisions. Experimentally measuring solubility is costly and time-consuming, motivating the use of predictive computational models to predict compound solubility early in development. Machine learning approaches to solubility prediction typically rely on molecular descriptors that encode size, polarity, lipophilicity, functional group composition, and more. Classical models such as Random Forests are well-suited to tabular descriptor data and often serve as strong baselines. Neural networks, while more sensitive to hyperparameters and initialization, offer increased representational capacity and may capture nonlinear interactions among descriptors. In this project, I developed, tuned, and compared machine learning models for predicting aqueous solubility (`logS`) from molecular descriptors using the Delaney ESOL dataset, with an emphasis on fair model comparison, stability across random seeds, and underlying chemistry-based interpretability.
+Aqueous solubility plays a central role in drug discovery, affecting absorption, distribution, and formulation decisions. Experimentally measuring solubility is costly and time-consuming, motivating the use of predictive computational models to predict compound solubility early in development. 
+
+Machine learning approaches to solubility prediction typically rely on molecular descriptors that encode size, polarity, lipophilicity, functional group composition, and more. Classical models such as Random Forests are well-suited to tabular descriptor data and often serve as strong baselines. Neural networks, while more sensitive to hyperparameters and initialization, offer increased representational capacity and may capture nonlinear interactions among descriptors. 
+
+In this project, I developed, tuned, and compared machine learning models for predicting aqueous solubility (`logS`) from molecular descriptors using the Delaney ESOL dataset, with an emphasis on fair model comparison, stability across random seeds, and underlying chemistry-based interpretability.
 
 Three main models were tuned and evaluated: a Random Forest via scikit-learn with a baseline descriptor-set, a multilayer perceptron (MLP) via PyTorch using the same base descriptor-set, and an MLP using an expanded descriptor-set. Across 25 random-seed trials, the expanded MLP achieved both the lowest mean RMSE and the lowest variance, indicating generalization and training stability superior to the Random Forest and base MLP. While the Random Forest occasionally produced strong individual predictions, its performance was less stable across seeds.
 
@@ -14,7 +18,7 @@ Three main models were tuned and evaluated: a Random Forest via scikit-learn wit
 - Expanding the descriptor set improves stability moreso than peak performance
 - Performance differences are larger than expected seed-level noise, supporting meaningful model comparisons
 
-This project is exploratory in nature and prioritizes methodological logic and learning over production-grade reproducibility, and results should be interpreted accordingly.
+This project is exploratory in nature and prioritizes methodological logic, learning, and analysis over research-grade reproducibility, and results should be interpreted as such.
 
 ## 2. Data & Experimental Setup
 
@@ -91,3 +95,39 @@ Gini-based and permutation analysis identified `logP`, a metric for lipophilicit
 Permutation analysis for the expanded MLP model revealed somewhat overlapping but different importance patterns compared to the Random Forest. The expanded MLP appeared to distribute importance across a broader set of descriptors, consistent with its improved stability. As with the Random Forest, these findings reflect model sensitivity rather than mechanistic insight.
 
 ![Permutation Importance RF vs MLP](exports/permutation_importance_comparison.png)
+
+## 7. Cross-Dataset Generalization
+
+As a final step, a train/test matrix was used with the Delaney ESOL dataset, the baseline, and the AqSolDB dataset, a new addition. AqSolDB contains `9655` datapoints to Delaney's `1144` and spans a substantially wider range of logS values, whereas ESOL is smaller and more narrowly distributed.
+
+When trained and tested on the same dataset, the same pattern of the expanded MLP minorly, but materially outperforming the RF prevails. Performance is notably better on ESOL → ESOL, reflecting the dataset’s narrower `logS` range and reduced chemical diversity, which seems to make the prediction task intrinsically easier.
+
+Training on the larger AqSolDB dataset and testing on ESOL yields the lowest RMSE throughout the project (for RF, `0.442`), indicating that the broader coverage in AqSolDB enables the models to better generalize. In contrast, training on ESOL and testing on AqSolDB produces the worst performance, particularly for the MLP, consistent with a severe domain mismatch.
+
+The Random Forest exhibits lower RMSE and variance under domain shift. This suggests that the neural network is more sensitive to dataset mismatch, whereas the Random Forest is primarily affected by the breadth of the training coverage.
+
+Overall, these results emphasize that dataset size and target range have great effects on cross-dataset performance, often more than model choice itself, and reinforce the importance of training on diverse data to boost generalization performance.
+
+![Model Generalization with New Datasets](exports/dataset_performance_comparison.png)
+
+## 8. Limitations
+
+- There is not pipeline-level reproducibility via a single execution command. This reflects a prioritization of learning over polished, research-grade work.
+- Descriptor-based models cannot fully capture structural nuances; molecular graphs and a GNN implementation would likely improve model performance, but this falls outside the scope of this project.
+- Hyperparameter tuning was based only on the Delaney ESOL performance, so the "optimal" hyperparameters may not be optimal for other datasets.
+
+## 9. Conclusion
+
+8. Conclusions
+
+This project demonstrates that, under fair evaluation, neural networks can outperform classical ensemble models for aqueous solubility prediction when provided with sufficiently rich descriptor information. Importantly, descriptor expansion also improved training stability and consistency.
+
+Beyond specific performance metrics, the project highlights the value of stability testing and basic interpretability in applied machine learning for chemistry. The resulting framework provides a foundation for more advanced modeling approaches, including graph-based representations and uncertainty-aware predictions, in future work.
+
+## 10. Future Work
+
+### Goals:
+- Build fully reproducible pipelines and transition from exploratory to research-grade coding structure
+- Apply these concepts to other interests - financial models, biological data, etc.
+- Benchmark performance against existing models
+- Explore chemical interpretations more in-depth as they align with coursework and target variables

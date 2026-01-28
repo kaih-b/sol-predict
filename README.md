@@ -6,7 +6,7 @@ Predicting aqueous solubility (logS) of organic compounds from molecular descrip
 
 This project builds and compares machine learning models (Random Forest, PyTorch MLP) trained on molecular descriptors to predict aqueous solubility. Key deliverables include performance metrics, visualization figures, and interpretability analyses.
 
-The project serves as an introduction to data-driven chemical engineering workflows — combining Python, machine learning, data science, and chemical intrepretation.
+The project serves as an introduction to data-driven chemical engineering workflows — combining Python, machine learning, data science, and chemical interpretation.
 
 ## Results Overview
 

@@ -1,21 +1,23 @@
-# SolPredict Final Results
+# SolPredict: Summary & Analysis
 
 ## 1. Background & Summary
 
-Aqueous solubility plays a central role in drug discovery, affecting absorption, distribution, and formulation decisions. Experimentally measuring solubility is costly and time-consuming, motivating the use of predictive computational models to predict compound solubility early in development. 
+Aqueous solubility plays a central role in drug discovery, affecting absorption, distribution, and formulation decisions. Experimentally measuring solubility is costly and time-consuming, motivating the use of computational models to estimate compound solubility early in development.
 
 Machine learning approaches to solubility prediction typically rely on molecular descriptors that encode size, polarity, lipophilicity, functional group composition, and more. Classical models such as Random Forests are well-suited to tabular descriptor data and often serve as strong baselines. Neural networks, while more sensitive to hyperparameters and initialization, offer increased representational capacity and may capture nonlinear interactions among descriptors. 
 
-In this project, I developed, tuned, and compared machine learning models for predicting aqueous solubility (`logS`) from molecular descriptors using the Delaney ESOL dataset, with an emphasis on fair model comparison, stability across random seeds, and underlying chemistry-based interpretability.
+In this project, I developed, tuned, and compared machine learning models for predicting aqueous solubility (`logS`) from molecular descriptors using the Delaney ESOL dataset, with an emphasis on fair model comparison, stability across random seeds, and chemistry-aligned interpretability analyses.
 
 Three main models were tuned and evaluated: a Random Forest via scikit-learn with a baseline descriptor-set, a multilayer perceptron (MLP) via PyTorch using the same base descriptor-set, and an MLP using an expanded descriptor-set. Across 25 random-seed trials, the expanded MLP achieved both the lowest mean RMSE and the lowest variance, indicating generalization and training stability superior to the Random Forest and base MLP. While the Random Forest occasionally produced strong individual predictions, its performance was less stable across seeds.
+
+Primary model development was performed on the Delaney ESOL dataset, with AqSolDB used only for downstream generalization analysis.
 
 ![Final Model Comparison](exports/updated_model_comparison.png)
 
 ### 1.1 Key Takeaways
 
 - Neural networks materially outperform Random Forests under a matched evaluation protocol for this task
-- Expanding the descriptor set improves stability moreso than peak performance
+- Expanding the descriptor set improves stability more so than peak performance
 - Performance differences are larger than expected seed-level noise, supporting meaningful model comparisons
 
 This project is exploratory in nature and prioritizes methodological logic, learning, and analysis over research-grade reproducibility, and results should be interpreted as such.
@@ -24,7 +26,7 @@ This project is exploratory in nature and prioritizes methodological logic, lear
 
 ### 2.1 Dataset
 
-Models were trained on the Delaney ESOL dataset, with the target variable defined as `logS` (logarithm of aqueous solubility). Dataset preprocessing was kept minimal to avoid unnecessary complications or introducing additional modeling assumptions.
+Models were trained on the Delaney ESOL dataset (`n = ~1100` compounds), with the target variable defined as `logS` (logarithm of aqueous solubility). Dataset preprocessing was kept minimal to avoid unnecessary complications or introducing additional modeling assumptions.
 
 ### 2.2 Train/Validation/Test Splits
 
@@ -44,13 +46,13 @@ Two sets of descriptors were used in the final models:
 
 ### 3.2 Models
 
-1. **Random Forest**: The Random Forest model serves as a strong baseline for tabular chemical data. It is more insensitive to feature scaling and can capture nonlinear effects, but struggles to extrapolate smoothly across a wider chemical space. 
+1. **Random Forest**: The Random Forest model serves as a strong baseline for tabular chemical data. It is less sensitive to feature scaling and can capture nonlinear effects, but struggles to extrapolate smoothly across a wider chemical space. 
     
     Tuned Hyperparameters: `max_depth = 20`, `min_samples_leaf = 2`, `min_samples_split = 2`, `n_estimators = 200`.
 
 2. **Base MLP**: A neural network trained on the base descriptor set using an Adam optimizer. 
     
-    Tuned Hyperparamaters: `hidden_sizes = (64, 32, 16, 8)`, `dropout_p = 0.0`, `learning_rate = 2e-3`, `weight_decay = 1e-3`
+    Tuned Hyperparameters: `hidden_sizes = (64, 32, 16, 8)`, `dropout_p = 0.0`, `learning_rate = 2e-3`, `weight_decay = 1e-3`
     
 3. **Expanded MLP**: Trained on the expanded descriptor set. Tests whether additional feature information improves learning stability and generalization.
 
@@ -64,8 +66,8 @@ Across repeated seed evaluations, the expanded-descriptor MLP achieved the lowes
 
 | Model | Features | Mean RMSE | RMSE STD |
 |-------|----------|------|------|
-| Tuned Random Forest | tuned | 0.705 | 0.085 |
-| Base MLP | tuned | 0.676 | 0.069 |
+| Tuned Random Forest | base | 0.705 | 0.085 |
+| Base MLP | base | 0.676 | 0.069 |
 | Expanded MLP | expanded | 0.648 | 0.055 |
 
 ### 5.2 Residual and Error Analysis
@@ -76,7 +78,7 @@ Residual distributions for all models were approximately centered around zero, i
 
 ### 5.3 MLP Learning Behavior
 
-Learning curves for the neural networks showed stable convergence with minor overfitting. The expanded-descriptor MLP exhibited smoother validation loss trajectories, suggesting improved signaling during training, but also appears to have mildly greater overfitting.
+Learning curves for the neural networks showed stable convergence. The expanded-descriptor MLP exhibited smoother validation loss trajectories, suggesting improved signaling during training, but also appears to have mild overfitting.
 
 ![Base MLP Learning Curves](wk5/07_MLP_base_learning_curve.png)
 ![Expanded MLP Learning Curves](wk5/07_MLP_ext_learning_curve.png)
@@ -100,7 +102,7 @@ Permutation analysis for the expanded MLP model revealed somewhat overlapping bu
 
 As a final step, a train/test matrix was used with the Delaney ESOL dataset, the baseline, and the AqSolDB dataset, a new addition. AqSolDB contains `9655` datapoints to Delaney's `1144` and spans a substantially wider range of logS values, whereas ESOL is smaller and more narrowly distributed.
 
-When trained and tested on the same dataset, the same pattern of the expanded MLP minorly, but materially outperforming the RF prevails. Performance is notably better on ESOL → ESOL, reflecting the dataset’s narrower `logS` range and reduced chemical diversity, which seems to make the prediction task intrinsically easier.
+When trained and tested on the same dataset, the same pattern of the expanded MLP slightly but consistently outperforming the RF prevails. Performance is notably better on ESOL → ESOL, reflecting the dataset’s narrower `logS` range and reduced chemical diversity, which seems to make the prediction task intrinsically easier.
 
 Training on the larger AqSolDB dataset and testing on ESOL yields the lowest RMSE throughout the project (for RF, `0.442`), indicating that the broader coverage in AqSolDB enables the models to better generalize. In contrast, training on ESOL and testing on AqSolDB produces the worst performance, particularly for the MLP, consistent with a severe domain mismatch.
 
@@ -115,16 +117,21 @@ Overall, these results emphasize that dataset size and target range have great e
 - There is not pipeline-level reproducibility via a single execution command. This reflects a prioritization of learning over polished, research-grade work.
 - Descriptor-based models cannot fully capture structural nuances; molecular graphs and a GNN implementation would likely improve model performance, but this falls outside the scope of this project.
 - Hyperparameter tuning was based only on the Delaney ESOL performance, so the "optimal" hyperparameters may not be optimal for other datasets.
+- Random splits were used rather than scaffold-based splits, which may overestimate performance under structural shift.
 
 ## 9. Conclusion
-
-8. Conclusions
 
 This project demonstrates that, under fair evaluation, neural networks can outperform classical ensemble models for aqueous solubility prediction when provided with sufficiently rich descriptor information. Importantly, descriptor expansion also improved training stability and consistency.
 
 Beyond specific performance metrics, the project highlights the value of stability testing and basic interpretability in applied machine learning for chemistry. The resulting framework provides a foundation for more advanced modeling approaches, including graph-based representations and uncertainty-aware predictions, in future work.
 
 ## 10. Future Work
+
+### Extensions of SolPredict
+- Implement richer molecular representations (GNNs) and assess model performance
+- Implement better uncertainty measures and track apples-to-apples through model tuning and development
+- Re-tune hyperparameters using the AqSolDB (wider) dataset to improve MLP performance
+- Test on other datasets
 
 ### Goals:
 - Build fully reproducible pipelines and transition from exploratory to research-grade coding structure

@@ -2,13 +2,13 @@
 
 ## 1. Background & Summary
 
-Aqueous solubility plays a central role in drug discovery, affecting absorption, distribution, and formulation decisions. Experimentally measuring solubility is costly and time-consuming, motivating the use of computational models to estimate compound solubility early in development.
+Aqueous solubility plays a central role in drug discovery, affecting absorption, distribution, and formulation decisions. Experimentally measuring solubility is costly and time-consuming, motivating the use of computational models to estimate compound solubility.
 
-Machine learning approaches to solubility prediction typically rely on molecular descriptors that encode size, polarity, lipophilicity, functional group composition, and more. Classical models such as Random Forests are well-suited to tabular descriptor data and often serve as strong baselines. Neural networks, while more sensitive to hyperparameters and initialization, offer increased representational capacity and may capture nonlinear interactions among descriptors. 
+Machine learning approaches to solubility prediction rely on molecular descriptors that encode size, polarity, lipophilicity, functional group composition, and more. Classical models such as Random Forests are well-suited for tabular descriptor data and often serve as strong baselines. Neural networks, while more sensitive to hyperparameters, offer increased representational capacity and may better capture nonlinear interactions among descriptors. 
 
-In this project, I developed, tuned, and compared machine learning models for predicting aqueous solubility (`logS`) from molecular descriptors using the Delaney ESOL dataset, with an emphasis on fair model comparison, stability across random seeds, and chemistry-aligned interpretability analyses.
+In this project, I developed, tuned, and compared machine learning models for predicting aqueous solubility (`logS`) from molecular descriptors using the Delaney ESOL dataset, with an emphasis on fair model comparison, stability across random seeds, and chemical interpretability analysis.
 
-Three main models were tuned and evaluated: a Random Forest via scikit-learn with a baseline descriptor-set, a multilayer perceptron (MLP) via PyTorch using the same base descriptor-set, and an MLP using an expanded descriptor-set. Across 25 random-seed trials, the expanded MLP achieved both the lowest mean RMSE and the lowest variance, indicating generalization and training stability superior to the Random Forest and base MLP. While the Random Forest occasionally produced strong individual predictions, its performance was less stable across seeds.
+Three main models were tuned and evaluated: a Random Forest via `scikit-learn` with a baseline descriptor-set, a multilayer perceptron (MLP) via `PyTorch` using the same base descriptor-set, and an MLP using an expanded descriptor-set. Across 25 random-seed trials, the expanded MLP achieved both the lowest mean RMSE and the lowest variance, indicating superior generalization and training stability. While the Random Forest occasionally produced strong individual predictions, its performance was less stable across seeds.
 
 Primary model development was performed on the Delaney ESOL dataset, with AqSolDB used only for downstream generalization analysis.
 
@@ -22,11 +22,16 @@ Primary model development was performed on the Delaney ESOL dataset, with AqSolD
 
 This project is exploratory in nature and prioritizes methodological logic, learning, and analysis over research-grade reproducibility, and results should be interpreted as such.
 
+### 1.2 Repository structure
+
+- `wk*/`: exploratory scripts, data, and figures. Represents a rough categorization of the project into weeks of work
+- `exports/`: data & figures for final use
+
 ## 2. Data & Experimental Setup
 
 ### 2.1 Dataset
 
-Models were trained on the Delaney ESOL dataset (`n = ~1100` compounds), with the target variable defined as `logS` (logarithm of aqueous solubility). Dataset preprocessing was kept minimal to avoid unnecessary complications or introducing additional modeling assumptions.
+Models were trained on the Delaney ESOL dataset (`n = ~1100` compounds), with the target variable defined as `logS` (logarithm of aqueous solubility). Dataset preprocessing was kept minimal to avoid unnecessary complications or introducing additional assumptions.
 
 ### 2.2 Train/Validation/Test Splits
 
@@ -34,7 +39,7 @@ Data were split into training, validation, and test sets using a fixed 80/10/10 
 
 ### 2.3 Evaluation Metrics
 
-Root Mean Squared Error (RMSE) was used as the primary evaluation metric, with R² reported as a secondary diagnostic. Tuned hyperparameters were determined based on minimum RMSE, keeping the train/validation/test split consistent throughout. To assess robustness, each final model configuration was evaluated across 25 random seeds. Final performance is reported as the mean and standard deviation of RMSE across seeds, rather than relying on a single run.
+Root Mean Squared Error (RMSE) was used as the primary evaluation metric, with R² reported as a secondary diagnostic. Tuned hyperparameters were determined based on minimum RMSE, keeping the train/validation/test split consistent throughout. To assess robustness, each final model configuration was evaluated across 25 random seeds. Final performance is reported as the mean and standard deviation of test RMSE across seeds, rather than relying on a single run.
 
 ## 3. Features & Models
 
@@ -42,7 +47,7 @@ Root Mean Squared Error (RMSE) was used as the primary evaluation metric, with R
 
 Two sets of descriptors were used in the final models:
 1. **Base**: comprised of seven descriptors capturing size, polarity, complexity, aromaticity, and lipophilicity.
-2. **Expanded**: comprised of eleven descriptors intended to provide richer chemical signal for the NN model.
+2. **Expanded**: comprised of eleven total descriptors (four on top of the base descriptors) intended to provide richer chemical signal for the NN model.
 
 ### 3.2 Models
 
@@ -132,9 +137,9 @@ Beyond specific performance metrics, the project highlights the value of stabili
 - Implement better uncertainty measures and track apples-to-apples through model tuning and development
 - Re-tune hyperparameters using the AqSolDB (wider) dataset to improve MLP performance
 - Test on other datasets
+- Develop deeper, chemically grounded interpretation analyses where aligned with available descriptors and targets.
 
 ### Goals:
 - Build fully reproducible pipelines and transition from exploratory to research-grade coding structure
-- Apply these concepts to other interests - financial models, biological data, etc.
+- Extend the modeling and evaluation framework to other domains (e.g., financial or biological data)
 - Benchmark performance against existing models
-- Explore chemical interpretations more in-depth as they align with coursework and target variables
